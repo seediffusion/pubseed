@@ -1,0 +1,32 @@
+[package]
+name = "pubseed"
+version = "0.1.0"
+edition = "2024"
+description = "An accessible desktop client for AudioPub"
+license = "MIT"
+
+[dependencies]
+wxdragon = "0.9"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+dirs = "6"
+reqwest = { version = "0.12", features = ["blocking", "json"] }
+# Decoding and output. `mp4` brings AAC (the site's transcodes and AAC live
+# streams); Opus uploads are not decodable and fall back to the AAC transcode.
+rodio = { version = "0.22", default-features = false, features = ["playback", "mp3", "mp4", "vorbis", "flac", "wav"] }
+tempfile = "3"
+windows = { version = "0.62", features = [
+    "Win32_Foundation",
+    "Win32_Media_Speech",
+    "Win32_Security_Credentials",
+    "Win32_System_Com",
+    "Win32_System_Ole",
+    "Win32_System_Variant",
+    "Win32_UI_Accessibility",
+    "Win32_UI_Shell",
+    "Win32_UI_WindowsAndMessaging",
+] }
+windows-core = "0.62"
+
+[build-dependencies]
+embed-manifest = "1.5.1"
