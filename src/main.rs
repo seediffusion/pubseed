@@ -8,6 +8,7 @@ mod api;
 mod config;
 mod devalue;
 mod player;
+mod recorder;
 mod speech;
 mod ui;
 

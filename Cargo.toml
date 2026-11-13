@@ -10,10 +10,10 @@ wxdragon = "0.9"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 dirs = "6"
-reqwest = { version = "0.12", features = ["blocking", "json"] }
+reqwest = { version = "0.12", features = ["blocking", "json", "multipart"] }
 # Decoding and output. `mp4` brings AAC (the site's transcodes and AAC live
 # streams); Opus uploads are not decodable and fall back to the AAC transcode.
-rodio = { version = "0.22", default-features = false, features = ["playback", "mp3", "mp4", "vorbis", "flac", "wav"] }
+rodio = { version = "0.22", default-features = false, features = ["playback", "recording", "mp3", "mp4", "vorbis", "flac", "wav"] }
 tempfile = "3"
 windows = { version = "0.62", features = [
     "Win32_Foundation",
@@ -23,6 +23,7 @@ windows = { version = "0.62", features = [
     "Win32_System_Ole",
     "Win32_System_Variant",
     "Win32_UI_Accessibility",
+    "Win32_UI_Input_KeyboardAndMouse",
     "Win32_UI_Shell",
     "Win32_UI_WindowsAndMessaging",
 ] }

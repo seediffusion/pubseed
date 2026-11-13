@@ -1,6 +1,6 @@
 # Pubseed
 
-Pubseed is a desktop client for [AudioPub](https://audiopub.site), the audio sharing and live streaming site. You can browse and play uploads, read and post comments, favorite uploads, subscribe to people, and sit in on live streams with the chat read out to you as it comes in.
+Pubseed is a desktop client for [AudioPub](https://audiopub.site), the audio sharing and live streaming site. You can browse and play uploads, post your own, read and post comments, favorite uploads, subscribe to people, and sit in on live streams with the chat read out to you as it comes in.
 
 It was built for screen reader users first. Everything can be done from the keyboard, every command lives in the menu bar with its shortcut next to it, and chat messages can be spoken through NVDA, JAWS or Narrator, or through any SAPI voice you have installed if you'd rather keep your screen reader free. It also follows the Windows dark mode setting.
 
@@ -27,6 +27,7 @@ When you join a live stream, its audio starts playing and the Live tab turns int
 | Ctrl+U | Your profile |
 | Ctrl+B | Your favorites |
 | Ctrl+F | Search |
+| Ctrl+N | New audio |
 | Ctrl+, | Settings |
 | Ctrl+Q | Exit |
 | Ctrl+P | Play or pause |
@@ -40,6 +41,16 @@ When you join a live stream, its audio starts playing and the Live tab turns int
 | Ctrl+Shift+L | Leave the stream |
 
 In a list, Left and Right skip through whatever is playing and Delete removes your own comment or a notification. On the Position slider, the arrows move 5 seconds, Page Up and Page Down move 30, Home and End go to the start and end, and the number keys jump through the audio (5 is halfway).
+
+## Posting audio
+
+File, New audio (Ctrl+N) opens a window for a new upload. It's a separate window, so you can carry on using the rest of Pubseed while it's open, and Ctrl+N brings it back if it's behind something.
+
+Under "Audio from", choose whether to record it or use a file on your computer. Recording uses your default microphone: press Record to start, Pause if you need a moment, and Stop recording when you're done, then Play back to hear it or Discard to start over. Anything shorter than two seconds isn't kept. A file can be in any format AudioPub accepts, up to 500 MB.
+
+Give it a title, between 3 and 120 characters, and a description if you like, then press Publish. The Audio field shows how the upload is going, and once it's done the window closes and the new audio's page opens. Closing the window with something in it asks before throwing it away.
+
+Recordings are saved as WAV, which is simple but large, at roughly 5.5 MB a minute for a mono microphone. That puts the 500 MB limit at about an hour and a half. AudioPub converts uploads itself, so the format only affects how long the upload takes.
 
 ## Signing in
 

@@ -2,6 +2,7 @@
 //! every command, four tabs whose pages open in place and go back with
 //! Escape, a player along the bottom, and a status bar.
 
+pub mod composer;
 pub mod dialogs;
 pub mod live;
 pub mod pages;
@@ -26,6 +27,7 @@ pub const ID_SIGN_IN: Id = 6001;
 pub const ID_SIGN_OUT: Id = 6002;
 pub const ID_SETTINGS: Id = 6003;
 pub const ID_EXIT: Id = 6004;
+pub const ID_NEW_AUDIO: Id = 6005;
 pub const ID_TAB_FIRST: Id = 6010; // ..=6013
 pub const ID_REFRESH: Id = 6014;
 pub const ID_BACK: Id = 6020;
@@ -91,6 +93,8 @@ pub struct App {
     /// The audios "Play all from here" is working through, and where it is.
     pub queue: RefCell<(Vec<Audio>, usize)>,
     pub room: RefCell<Option<live::Room>>,
+    /// The New audio window, while it is open.
+    pub composer: RefCell<Option<Rc<composer::Composer>>>,
     /// Each tab's pages, the visible one last.
     pub tabs: [RefCell<Vec<Rc<Page>>>; 4],
     pub w: Widgets,
@@ -299,6 +303,8 @@ impl App {
 
 fn build_menu_bar(read_chat: bool) -> MenuBar {
     let file = Menu::builder()
+        .append_item(ID_NEW_AUDIO, "&New audio...	Ctrl+N", "")
+        .append_separator()
         .append_item(ID_SIGN_IN, "Sign &in...", "")
         .append_item(ID_SIGN_OUT, "Sign &out", "")
         .append_separator()
@@ -362,6 +368,7 @@ fn build_menu_bar(read_chat: bool) -> MenuBar {
 /// Every menu command, button and shortcut ends up here.
 pub fn dispatch(app: &Rc<App>, id: Id) {
     match id {
+        ID_NEW_AUDIO => composer::open(app),
         ID_SIGN_IN => dialogs::sign_in(app),
         ID_SIGN_OUT => {
             app.api.sign_out();
@@ -539,6 +546,7 @@ pub fn build(cfg: Config) {
         now: RefCell::new(None),
         queue: RefCell::new((Vec::new(), 0)),
         room: RefCell::new(None),
+        composer: RefCell::new(None),
         tabs: std::array::from_fn(|_| RefCell::new(Vec::new())),
         w: Widgets {
             frame,
@@ -635,6 +643,7 @@ pub fn build(cfg: Config) {
             let ticks = app.ticks.get() + 1;
             app.ticks.set(ticks);
             playback::tick(&app);
+            composer::tick(&app);
             // Once a minute, and shortly after starting.
             if ticks % 240 == 8 {
                 pages::poll_unread(&app);

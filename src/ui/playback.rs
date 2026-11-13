@@ -4,7 +4,7 @@ use super::*;
 use crate::player;
 use std::time::Duration;
 
-fn clock(time: Duration) -> String {
+pub fn clock(time: Duration) -> String {
     let seconds = time.as_secs();
     if seconds >= 3600 {
         format!(

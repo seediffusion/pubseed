@@ -4,14 +4,17 @@
 //! the `token` cookie set by `POST /login`.
 
 use crate::devalue;
+use reqwest::blocking::multipart::{Form, Part};
 use reqwest::blocking::{Client, RequestBuilder, Response};
 use reqwest::header::{ACCEPT, COOKIE, ORIGIN, SET_COOKIE};
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
 use serde_json::{Map, Value};
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, Read};
+use std::path::Path;
+use std::sync::Arc;
 use std::sync::Mutex;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::Duration;
 
 pub type Result<T> = std::result::Result<T, String>;
@@ -257,7 +260,7 @@ impl Api {
             return Err(SIGN_IN_FIRST.into());
         }
         let response = self.action(path, name, form)?;
-        envelope(response)
+        envelope(response).map(|_| ())
     }
 
     /// Signs in, returning the session token to remember and who signed in.
@@ -407,6 +410,55 @@ impl Api {
         self.action_ok("/notifications", "delete", &[("id", id)])
     }
 
+    /// Uploads a new audio and returns its id. `sent` counts the bytes of
+    /// the file sent so far.
+    pub fn upload(
+        &self,
+        file: &Path,
+        title: &str,
+        description: &str,
+        sent: Arc<AtomicU64>,
+    ) -> Result<String> {
+        if self.token().is_none() {
+            return Err(SIGN_IN_FIRST.into());
+        }
+        let reader =
+            std::fs::File::open(file).map_err(|e| format!("Couldn't open the audio: {e}"))?;
+        let length = reader
+            .metadata()
+            .map_err(|e| format!("Couldn't read the audio: {e}"))?
+            .len();
+        // The site takes the file's extension from its name.
+        let name = file
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("audio");
+        let part = Part::reader_with_length(
+            Counting {
+                inner: reader,
+                sent,
+            },
+            length,
+        )
+        .file_name(name.to_string());
+        let form = Form::new()
+            .text("title", title.to_string())
+            .text("description", description.to_string())
+            .part("file", part);
+        // No overall timeout: a large upload takes as long as it takes.
+        let request = self
+            .streaming
+            .post(format!("{}/upload", self.base))
+            .header(ACCEPT, "application/json")
+            .header(ORIGIN, &self.base)
+            .multipart(form);
+        let location = envelope(self.with_session(request).send().map_err(net)?)?;
+        match location.strip_prefix("/listen/") {
+            Some(id) if !id.is_empty() => Ok(id.to_string()),
+            _ => Err("The upload went through, but the site didn't say where it is".into()),
+        }
+    }
+
     /// Counts a play, as the web player does when playback starts.
     pub fn register_play(&self, audio_id: &str) {
         let url = format!("{}/listen/{audio_id}/try_register_play", self.base);
@@ -499,15 +551,32 @@ impl Api {
     }
 }
 
+/// Passes a file through, counting the bytes read from it.
+struct Counting<R> {
+    inner: R,
+    sent: Arc<AtomicU64>,
+}
+
+impl<R: Read> Read for Counting<R> {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        let read = self.inner.read(buf)?;
+        self.sent.fetch_add(read as u64, Ordering::Relaxed);
+        Ok(read)
+    }
+}
+
 /// Reads a form action's JSON envelope: `{"type": "success" | "redirect" |
 /// "failure" | "error", ...}`. The HTTP status alone is not trustworthy.
-fn envelope(response: Response) -> Result<()> {
+/// Returns where a redirect points, or an empty string.
+fn envelope(response: Response) -> Result<String> {
     let status = response.status();
     let body: Value = response
         .json()
         .map_err(|_| format!("The server answered {status}"))?;
     match body["type"].as_str() {
-        Some("success") | Some("redirect") => Ok(()),
+        Some("success") | Some("redirect") => {
+            Ok(body["location"].as_str().unwrap_or_default().to_string())
+        }
         Some("failure") => {
             // `data` is itself a devalue-encoded string.
             let message = body["data"]
