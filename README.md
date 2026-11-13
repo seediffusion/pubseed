@@ -1,0 +1,81 @@
+# Pubseed
+
+Pubseed is a desktop client for [AudioPub](https://audiopub.site), the audio sharing and live streaming site. You can browse and play uploads, read and post comments, favorite uploads, subscribe to people, and sit in on live streams with the chat read out to you as it comes in.
+
+It was built for screen reader users first. Everything can be done from the keyboard, every command lives in the menu bar with its shortcut next to it, and chat messages can be spoken through NVDA, JAWS or Narrator, or through any SAPI voice you have installed if you'd rather keep your screen reader free. It also follows the Windows dark mode setting.
+
+Pubseed is in early development and only runs on Windows for now. Broadcasting your own streams isn't part of it yet; if you want to stream to AudioPub, have a look at [Pubsplash](https://github.com/cha0t1cnu3tral/pubsplash).
+
+## Getting around
+
+The window has four tabs: Home, Subscriptions, Live and Notifications. Ctrl+1 to Ctrl+4 jump between them, and the Notifications tab shows how many you haven't read yet.
+
+Pages open inside the tab you're on, a bit like a web browser. Press Enter on an upload and its page opens with the description, Play, Favorite and More buttons, the comments, and a box for writing your own. Escape or Alt+Left takes you back to where you were. F6 moves between the tab strip, the page and the player at the bottom of the window.
+
+Every list works the same way. Enter opens whatever is selected (or joins a stream, or replies to a comment), Space plays or pauses, and the Applications key or Shift+F10 brings up everything else you can do with that item. Keep arrowing past the end of a feed and the next page loads.
+
+When you join a live stream, its audio starts playing and the Live tab turns into the stream's room, with the chat and a box to write in. You can switch to other tabs and keep listening. New messages are read aloud unless you turn that off with Ctrl+Shift+R or in Settings.
+
+## Keyboard shortcuts
+
+| Keys | What it does |
+| --- | --- |
+| Ctrl+1 to Ctrl+4 | Home, Subscriptions, Live, Notifications |
+| F5 | Refresh the page |
+| Escape or Alt+Left | Go back |
+| F6 and Shift+F6 | Next and previous part of the window |
+| Ctrl+U | Your profile |
+| Ctrl+B | Your favorites |
+| Ctrl+F | Search |
+| Ctrl+, | Settings |
+| Ctrl+Q | Exit |
+| Ctrl+P | Play or pause |
+| Ctrl+. | Stop |
+| Alt+Shift+Left and Right | Skip back and forward |
+| Alt+Shift+Page Up and Page Down | Previous and next in the queue |
+| Alt+Shift+Up and Down | Volume |
+| Ctrl+Shift+W | What's playing |
+| Ctrl+Shift+R | Read chat aloud on or off |
+| Ctrl+Shift+S | How many people are listening |
+| Ctrl+Shift+L | Leave the stream |
+
+In a list, Left and Right skip through whatever is playing and Delete removes your own comment or a notification. On the Position slider, the arrows move 5 seconds, Page Up and Page Down move 30, Home and End go to the start and end, and the number keys jump through the audio (5 is halfway).
+
+## Signing in
+
+Use File, Sign in with your AudioPub email and password. Your password is only sent to AudioPub to sign you in and is never saved. What Pubseed keeps is the session AudioPub gives back, and that goes in Windows Credential Manager under "Pubseed: https://audiopub.site" rather than in a file. Signing out deletes it.
+
+Your other settings are in `%APPDATA%\pubseed\settings.json`.
+
+## Building
+
+You'll need:
+
+- Windows 10 or 11
+- A recent stable Rust toolchain (the project uses the 2024 edition)
+- Visual Studio Build Tools with the C++ workload
+- CMake
+- LLVM, for the libclang that wxDragon uses to generate its bindings
+- Ninja, which isn't strictly required but makes the wxWidgets build a lot faster
+
+Then:
+
+```
+cargo build --release
+```
+
+The first build downloads the wxWidgets source and compiles it, which takes several minutes. Builds after that are quick. `cargo run` starts the app.
+
+`cargo test` runs the offline tests. A couple of tests talk to the real AudioPub site and play audio, so they're skipped by default; run them with `cargo test -- --ignored`.
+
+## How it talks to AudioPub
+
+AudioPub doesn't have a public API, so Pubseed uses the same endpoints the website does: the `__data.json` page data that SvelteKit serves, the site's form actions for things like favoriting and commenting, and the live events feed for chat. If the site changes, parts of Pubseed may stop working until they're updated. The site's source is at [the-byte-bender/audiopub-sv](https://github.com/the-byte-bender/audiopub-sv).
+
+## Thanks
+
+The way Pubseed gets wxWidgets controls to read properly with screen readers, and the way it speaks through them, comes from Pubsplash, by Brandon Cross.
+
+## Licence
+
+Pubseed is released under the MIT License; see `LICENSE`. Code and libraries from other projects keep their own licences, which are covered in `THIRD-PARTY-NOTICES.md`.
