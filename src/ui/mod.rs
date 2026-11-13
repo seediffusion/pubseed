@@ -247,6 +247,11 @@ impl App {
             None => "Not signed in".to_string(),
         };
         self.w.status.set_status_text(&text, 1);
+        // Only the one that applies can be chosen; the other is greyed out.
+        if let Some(menu_bar) = self.w.frame.get_menu_bar() {
+            menu_bar.enable_item(ID_SIGN_IN, user.is_none());
+            menu_bar.enable_item(ID_SIGN_OUT, user.is_some());
+        }
         *self.user.borrow_mut() = user;
     }
 
