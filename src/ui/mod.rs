@@ -78,6 +78,10 @@ pub struct Widgets {
     pub notebook: Notebook,
     pub tab_panels: [Panel; 4],
     pub tab_sizers: [BoxSizer; 4],
+    /// The panel everything in the window sits on.
+    pub root: Panel,
+    /// The player along the bottom, shown only while something is in it.
+    pub player_bar: Panel,
     pub play_button: Button,
     pub position: Slider,
     pub volume: Slider,
@@ -293,7 +297,9 @@ impl App {
         } else {
             1
         };
-        match (region + if forward { 1 } else { 2 }) % 3 {
+        // With nothing in the player there are only two regions.
+        let regions = if w.player_bar.is_shown() { 3 } else { 2 };
+        match (region + if forward { 1 } else { regions - 1 }) % regions {
             0 => w.notebook.set_focus(),
             1 => {
                 if let Some(page) = self.current() {
@@ -535,6 +541,7 @@ pub fn build(cfg: Config) {
     bar_sizer.add(&volume, 0, centred, 4);
     bar.set_sizer(bar_sizer, true);
     root_sizer.add(&bar, 0, SizerFlag::Expand, 0);
+    bar.hide();
     root.set_sizer(root_sizer, true);
 
     let status = frame.create_status_bar(3, 0, ID_ANY as Id, "statusBar");
@@ -557,6 +564,8 @@ pub fn build(cfg: Config) {
             notebook,
             tab_panels,
             tab_sizers,
+            root,
+            player_bar: bar,
             play_button,
             position,
             volume,

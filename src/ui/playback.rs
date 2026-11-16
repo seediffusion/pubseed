@@ -257,6 +257,21 @@ pub fn tick(app: &Rc<App>) {
     .filter(|_| app.player.borrow().is_loaded())
     .map(|id| (id, !playing));
     pages::set_playing(app, marked);
+    // The player is only on screen while it has something in it.
+    let wanted = app.now.borrow().is_some();
+    let w = &app.w;
+    if w.player_bar.is_shown() != wanted {
+        let focus_inside =
+            w.play_button.has_focus() || w.position.has_focus() || w.volume.has_focus();
+        if !wanted
+            && focus_inside
+            && let Some(page) = app.current()
+        {
+            page.list.set_focus();
+        }
+        w.player_bar.show(wanted);
+        w.root.layout();
+    }
     if finished {
         let was_live = matches!(&*app.now.borrow(), Some(Now::Live(_)));
         let has_next = {
