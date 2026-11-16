@@ -249,6 +249,14 @@ pub fn tick(app: &Rc<App>) {
             fraction,
         )
     };
+    let marked = match &*app.now.borrow() {
+        Some(Now::Audio(audio)) => Some(audio.id.clone()),
+        Some(Now::Live(stream)) => Some(stream.id.clone()),
+        None => None,
+    }
+    .filter(|_| app.player.borrow().is_loaded())
+    .map(|id| (id, !playing));
+    pages::set_playing(app, marked);
     if finished {
         let was_live = matches!(&*app.now.borrow(), Some(Now::Live(_)));
         let has_next = {

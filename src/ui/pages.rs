@@ -51,7 +51,23 @@ impl Item {
         }
     }
 
+    /// The row's text, ending " (playing)" or " (paused)" for whatever is
+    /// in the player.
     fn label(&self) -> String {
+        let marker = PLAYING.with(|playing| match &*playing.borrow() {
+            Some((id, paused)) if id == self.id() => {
+                if *paused {
+                    " (paused)"
+                } else {
+                    " (playing)"
+                }
+            }
+            _ => "",
+        });
+        self.plain_label() + marker
+    }
+
+    fn plain_label(&self) -> String {
         match self {
             Item::Audio(audio) => format!(
                 "{}, by {}, {}, {} plays, {} favorites{}",
@@ -81,6 +97,38 @@ impl Item {
             ),
             Item::Chat(chat) => format!("{}: {}", chat.user.display_name, chat.content),
             Item::Notification(notification) => notification_label(notification),
+        }
+    }
+}
+
+thread_local! {
+    /// The id of the audio or stream in the player, and whether it is paused.
+    static PLAYING: RefCell<Option<(String, bool)>> = const { RefCell::new(None) };
+}
+
+/// Records what the player is doing and brings the rows that show it, or
+/// showed what was playing before, up to date.
+pub fn set_playing(app: &App, state: Option<(String, bool)>) {
+    let previous = PLAYING.with(|playing| playing.borrow().clone());
+    if previous == state {
+        return;
+    }
+    PLAYING.with(|playing| *playing.borrow_mut() = state.clone());
+    let changed = [previous, state].map(|state| state.map(|(id, _)| id));
+    for stack in &app.tabs {
+        for page in stack.borrow().iter() {
+            let rows: Vec<(usize, String)> = page
+                .st
+                .borrow()
+                .items
+                .iter()
+                .enumerate()
+                .filter(|(_, item)| changed.iter().flatten().any(|id| id == item.id()))
+                .map(|(index, item)| (index, item.label()))
+                .collect();
+            for (index, label) in rows {
+                page.list.set_string(index as u32, &label);
+            }
         }
     }
 }
