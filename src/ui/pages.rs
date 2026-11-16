@@ -126,6 +126,9 @@ pub struct State {
     subscribed: bool,
     /// The comment being replied to: its id and its author's name.
     reply_to: Option<(String, String)>,
+    /// Set once the user has been told this feed has new posts, so they
+    /// are told once rather than at every check.
+    told_new: bool,
 }
 
 pub struct Page {
@@ -407,6 +410,81 @@ pub fn refresh_feeds(app: &Rc<App>) {
     }
 }
 
+/// Looks at the feed on screen for anything new, as Ramblio does every few
+/// minutes. Rows already in the list get their current counts and ages. New
+/// posts are not put in, which would move the list under the user: they are
+/// told once, and F5 shows them.
+pub fn check_feed(app: &Rc<App>) {
+    let Some(page) = app.current() else { return };
+    let Kind::Feed(source) = &page.kind else {
+        return;
+    };
+    let sort = app.cfg.borrow().sort as usize;
+    let random = matches!(source, Source::Home) && crate::api::SORTS[sort.min(5)].1 == "random";
+    let busy = {
+        let st = page.st.borrow();
+        !st.loaded || st.loading || st.error.is_some()
+    };
+    // A search is not a feed, and a random list is different every time.
+    if busy || random || matches!(source, Source::Search(_)) {
+        return;
+    }
+    let newest_first = !matches!(source, Source::Home) || sort == 0;
+    let (id, source) = (page.id, source.clone());
+    background(
+        app,
+        move |api| api.listing(&source, sort, 1),
+        move |app, result| {
+            let (Ok(listing), Some(page)) = (result, app.find_page(id)) else {
+                return;
+            };
+            let fresh: Vec<Item> = listing
+                .streams
+                .into_iter()
+                .map(Item::Stream)
+                .chain(listing.audios.into_iter().map(Item::Audio))
+                .collect();
+            let selected = page.selected();
+            let (rows, new_audio, new_stream, tell) = {
+                let mut st = page.st.borrow_mut();
+                if st.loading {
+                    return;
+                }
+                let (mut new_audio, mut new_stream) = (false, false);
+                let mut rows = Vec::new();
+                for item in fresh {
+                    match st.items.iter().position(|old| old.id() == item.id()) {
+                        Some(index) => {
+                            st.items[index] = item;
+                            rows.push((index, st.items[index].label()));
+                        }
+                        None if matches!(item, Item::Stream(_)) => new_stream = true,
+                        None => new_audio = true,
+                    }
+                }
+                let tell = (new_audio || new_stream) && !st.told_new;
+                st.told_new |= tell;
+                (rows, new_audio, new_stream, tell)
+            };
+            for (index, label) in rows {
+                // Rewriting the selected row makes a screen reader read it.
+                if Some(index) != selected
+                    && page.list.get_string(index as u32).as_deref() != Some(&label)
+                {
+                    page.list.set_string(index as u32, &label);
+                }
+            }
+            if tell && app.current().is_some_and(|current| current.id == id) {
+                app.notify(match (new_audio, new_stream, newest_first) {
+                    (true, _, true) => "New audios. Press F5 to show them.",
+                    (true, _, false) => "This list has changed. Press F5 to update it.",
+                    (false, _, _) => "A stream has gone live. Press F5 to show it.",
+                });
+            }
+        },
+    );
+}
+
 fn flatten(comments: Vec<Comment>, depth: usize, into: &mut Vec<Item>) {
     for mut comment in comments {
         let replies = comment.replies.take().unwrap_or_default();
@@ -464,6 +542,7 @@ pub fn load(app: &Rc<App>, page: &Rc<Page>, more: bool) {
                             let mut st = page.st.borrow_mut();
                             if !more {
                                 st.items.clear();
+                                st.told_new = false;
                             }
                             let before = st.items.len();
                             st.items

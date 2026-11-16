@@ -648,6 +648,10 @@ pub fn build(cfg: Config) {
             app.ticks.set(ticks);
             playback::tick(&app);
             composer::tick(&app);
+            // Every three minutes.
+            if ticks % 720 == 0 {
+                pages::check_feed(&app);
+            }
             // Once a minute, and shortly after starting.
             if ticks % 240 == 8 {
                 pages::poll_unread(&app);
