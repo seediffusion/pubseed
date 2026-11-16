@@ -131,6 +131,10 @@ pub struct AudioPage {
     pub audio: Audio,
     pub comments: Vec<Comment>,
     pub is_subscribed: bool,
+    /// Whether the signed-in user may edit or delete this audio.
+    pub can_edit: bool,
+    /// How many edits they have left; `None` for no limit.
+    pub remaining_edits: Option<i64>,
 }
 
 pub struct StreamPage {
@@ -305,7 +309,7 @@ impl Api {
                 _ => SIGN_IN_FIRST.to_string(),
             });
         }
-        let audios: Vec<Audio> = take(&mut data, "audios");
+        let mut audios: Vec<Audio> = take(&mut data, "audios");
         let has_more = match data.get("totalPages").and_then(Value::as_u64) {
             Some(total) => u64::from(page) < total,
             // Search reports no page count; a full page means there may be more.
@@ -317,6 +321,12 @@ impl Api {
             is_subscribed: take(&mut data, "isSubscribed"),
             stream: take(&mut data, "stream"),
         });
+        // A profile's uploads come without their uploader, who is the profile.
+        if let Some(profile) = &profile {
+            for audio in &mut audios {
+                audio.user.get_or_insert_with(|| profile.user.clone());
+            }
+        }
         Ok(Listing {
             streams: if profile.is_some() {
                 Vec::new()
@@ -339,6 +349,8 @@ impl Api {
             audio: take(&mut data, "audio"),
             comments: take(&mut data, "comments"),
             is_subscribed: take(&mut data, "isSubscribed"),
+            can_edit: take(&mut data, "canEdit"),
+            remaining_edits: take(&mut data, "remainingEdits"),
         })
     }
 
@@ -457,6 +469,16 @@ impl Api {
             Some(id) if !id.is_empty() => Ok(id.to_string()),
             _ => Err("The upload went through, but the site didn't say where it is".into()),
         }
+    }
+
+    /// Changes an audio's title and description.
+    pub fn edit_audio(&self, audio_id: &str, title: &str, description: &str) -> Result<()> {
+        let form = [("title", title), ("description", description)];
+        self.action_ok(&format!("/listen/{audio_id}"), "edit", &form)
+    }
+
+    pub fn delete_audio(&self, audio_id: &str) -> Result<()> {
+        self.action_ok(&format!("/listen/{audio_id}"), "delete", &[])
     }
 
     /// Counts a play, as the web player does when playback starts.
@@ -585,6 +607,7 @@ fn envelope(response: Response) -> Result<String> {
                 .map(|data| devalue::page_data(&serde_json::json!({ "nodes": [{ "data": data }] })))
                 .and_then(|data| {
                     data.get("message")
+                        .or(data.get("editMessage"))
                         .and_then(Value::as_str)
                         .map(str::to_string)
                 });

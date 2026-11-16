@@ -174,6 +174,10 @@ pub struct State {
     subscribed: bool,
     /// The comment being replied to: its id and its author's name.
     reply_to: Option<(String, String)>,
+    /// Whether the signed-in user may edit or delete the page's audio, and
+    /// how many edits they have left (`None` for no limit).
+    can_edit: bool,
+    remaining_edits: Option<i64>,
     /// Set once the user has been told this feed has new posts, so they
     /// are told once rather than at every check.
     told_new: bool,
@@ -669,6 +673,8 @@ pub fn load(app: &Rc<App>, page: &Rc<Page>, more: bool) {
                             flatten(loaded.comments, 0, &mut st.items);
                             st.audio = Some(audio);
                             st.subscribed = loaded.is_subscribed;
+                            st.can_edit = loaded.can_edit;
+                            st.remaining_edits = loaded.remaining_edits;
                         }
                         if let Some(details) = &page.details {
                             details.set_value(&text);
@@ -922,8 +928,17 @@ fn show_item_menu(app: &Rc<App>, page: &Rc<Page>) {
         Item::Notification(_) => menu
             .append_item(ID_ITEM_OPEN, "&Open\tEnter", "")
             .append_item(ID_ITEM_DELETE, "&Delete\tDelete", ""),
+    };
+    if let Item::Audio(audio) = &item
+        && is_own(app, audio)
+    {
+        menu = menu.append_item(ID_ITEM_EDIT, "&Edit...", "").append_item(
+            ID_ITEM_DELETE,
+            "&Delete\tDelete",
+            "",
+        );
     }
-    .build();
+    let mut menu = menu.build();
     page.list.popup_menu(&mut menu, None);
 }
 
@@ -947,8 +962,15 @@ fn show_more_menu(page: &Page) {
         .append_item(ID_PAGE_SUBSCRIBE, &subscribe, "")
         .append_item(ID_PAGE_PROFILE, "View p&rofile", "")
         .append_item(ID_PAGE_COPY_LINK, "Copy &link", "")
-        .append_item(ID_PAGE_BROWSER, "Open in your &browser", "")
-        .build();
+        .append_item(ID_PAGE_BROWSER, "Open in your &browser", "");
+    if page.st.borrow().can_edit {
+        menu = menu.append_item(ID_PAGE_EDIT, "&Edit...", "").append_item(
+            ID_PAGE_DELETE,
+            "&Delete...",
+            "",
+        );
+    }
+    let mut menu = menu.build();
     button.popup_menu(&mut menu, None);
 }
 
@@ -1026,9 +1048,109 @@ fn toggle_subscribe(app: &Rc<App>, page: &Page) {
     );
 }
 
+fn is_own(app: &App, audio: &Audio) -> bool {
+    let me = app.user.borrow();
+    matches!((&*me, &audio.user), (Some(me), Some(uploader)) if me.id == uploader.id)
+}
+
+/// Edit on one of your own audios: asks for the new title and description.
+fn edit_audio(app: &Rc<App>, page: &Rc<Page>, audio: Audio) {
+    // The site only says how many edits are left on the audio's own page.
+    let remaining = match &page.kind {
+        Kind::Audio(_) => page.st.borrow().remaining_edits,
+        _ => None,
+    };
+    let Some((title, description)) = dialogs::edit_audio(app, &audio, remaining) else {
+        return;
+    };
+    if title == audio.title && description == audio.description.trim() {
+        return;
+    }
+    let id = page.id;
+    background(
+        app,
+        {
+            let (audio_id, title, description) =
+                (audio.id.clone(), title.clone(), description.clone());
+            move |api| api.edit_audio(&audio_id, &title, &description)
+        },
+        move |app, result| match result {
+            Err(error) => dialogs::message(app, "Edit audio", &format!("Couldn't save: {error}")),
+            Ok(()) => {
+                app.notify("Saved");
+                // Every page showing it gets the new title straight away.
+                for stack in &app.tabs {
+                    for page in stack.borrow().iter() {
+                        page.patch_audio(&audio.id, |audio| {
+                            audio.title = title.clone();
+                            audio.description = description.clone();
+                        });
+                    }
+                }
+                // The audio's own page also shows the description and how
+                // many edits are left.
+                with_page(id, |app, page| {
+                    if matches!(page.kind, Kind::Audio(_)) {
+                        load(app, page, false);
+                    }
+                });
+            }
+        },
+    );
+}
+
+/// Delete on one of your own audios, after asking.
+fn delete_audio(app: &Rc<App>, audio: Audio) {
+    let question = format!("Delete \"{}\"? This can't be undone.", audio.title);
+    if !dialogs::confirm(app, "Delete audio", &question) {
+        return;
+    }
+    background(
+        app,
+        {
+            let audio_id = audio.id.clone();
+            move |api| api.delete_audio(&audio_id)
+        },
+        move |app, result| match result {
+            Err(error) => {
+                dialogs::message(app, "Delete audio", &format!("Couldn't delete: {error}"))
+            }
+            Ok(()) => {
+                let playing =
+                    matches!(&*app.now.borrow(), Some(Now::Audio(now)) if now.id == audio.id);
+                if playing {
+                    playback::stop(app);
+                }
+                // Its own pages close, and it leaves every list it was in.
+                let pages: Vec<Rc<Page>> = app
+                    .tabs
+                    .iter()
+                    .flat_map(|stack| stack.borrow().clone())
+                    .collect();
+                for page in pages {
+                    if matches!(&page.kind, Kind::Audio(shown) if *shown == audio.id) {
+                        app.remove_page(page.id);
+                    } else {
+                        remove_item(&page, &audio.id);
+                    }
+                }
+                if let Some(revealed) = app.current() {
+                    ensure_loaded(app, &revealed);
+                }
+                app.notify("Audio deleted");
+            }
+        },
+    );
+}
+
 fn delete_selected(app: &Rc<App>, page: &Rc<Page>) {
     let id = page.id;
     match (page.selected_item(), &page.kind) {
+        (Some(Item::Audio(audio)), _) => {
+            if is_own(app, &audio) {
+                delete_audio(app, audio);
+            }
+        }
         (Some(Item::Comment(comment, _)), Kind::Audio(audio_id)) => {
             if app
                 .user
@@ -1111,6 +1233,21 @@ pub fn command(app: &Rc<App>, page: &Rc<Page>, id: Id) {
             _ => {}
         },
         ID_ITEM_DELETE => delete_selected(app, page),
+        ID_ITEM_EDIT => {
+            if let Some(Item::Audio(audio)) = item {
+                edit_audio(app, page, audio);
+            }
+        }
+        ID_PAGE_EDIT => {
+            if let Some(audio) = page_audio {
+                edit_audio(app, page, audio);
+            }
+        }
+        ID_PAGE_DELETE => {
+            if let Some(audio) = page_audio {
+                delete_audio(app, audio);
+            }
+        }
         ID_PAGE_PLAY => match (&page.kind, page_audio) {
             (Kind::Audio(_), Some(audio)) => playback::play_or_toggle(app, audio),
             (Kind::Room(_), _) => live::toggle_audio(app),

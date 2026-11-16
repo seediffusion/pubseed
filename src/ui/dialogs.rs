@@ -13,9 +13,15 @@ pub fn message(app: &App, title: &str, text: &str) {
     app.modal(|| dialog.show_modal());
 }
 
+/// Asks before something that cannot be undone. No is the default, so
+/// pressing Enter by reflex does not do it.
 pub fn confirm(app: &App, title: &str, question: &str) -> bool {
     let dialog = MessageDialog::builder(&app.w.frame, question, title)
-        .with_style(MessageDialogStyle::YesNo | MessageDialogStyle::IconQuestion)
+        .with_style(
+            MessageDialogStyle::YesNo
+                | MessageDialogStyle::NoDefault
+                | MessageDialogStyle::IconQuestion,
+        )
         .build();
     app.modal(|| dialog.show_modal()) == ID_YES
 }
@@ -110,6 +116,35 @@ impl Form {
         focus.set_focus();
         app.modal(|| self.dialog.show_modal()) == ID_OK
     }
+}
+
+/// Asks for an audio's new title and description. `None` if cancelled.
+pub fn edit_audio(app: &App, audio: &Audio, remaining: Option<i64>) -> Option<(String, String)> {
+    let form = Form::new(app, "Edit audio");
+    let title = form.text("Title", TextCtrlStyle::Default);
+    title.set_max_length(120);
+    title.set_value(&audio.title);
+    form.label("Description (optional)");
+    let description = TextCtrl::builder(&form.panel)
+        .with_style(TextCtrlStyle::MultiLine)
+        .with_size(Size::new(340, 160))
+        .build();
+    description.set_max_length(5000);
+    description.set_value(&audio.description);
+    form.add(&description, "Description (optional)");
+    if let Some(remaining) = remaining {
+        form.label(&format!(
+            "You can edit this {remaining} more time{}.",
+            if remaining == 1 { "" } else { "s" }
+        ));
+    }
+    let confirmed = form.run(app, "Save", &title);
+    let result = (
+        title.get_value().trim().to_string(),
+        description.get_value().trim().to_string(),
+    );
+    form.dialog.destroy();
+    confirmed.then_some(result)
 }
 
 pub fn sign_in(app: &Rc<App>) {

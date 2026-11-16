@@ -51,6 +51,8 @@ Under "Audio from", choose whether to record it or use a file on your computer. 
 
 Give it a title, between 3 and 120 characters, and a description if you like, then press Publish. The Audio field shows how the upload is going, and once it's done the window closes and the new audio's page opens. Closing the window with something in it asks before throwing it away.
 
+To change or remove something you've posted, use Edit or Delete on its menu in a list (the Applications key), or under More on its page. Delete on its row works too, and it always asks first. AudioPub allows three edits to a post's title and description.
+
 Recordings are saved as WAV, which is simple but large, at roughly 5.5 MB a minute for a mono microphone. That puts the 500 MB limit at about an hour and a half. AudioPub converts uploads itself, so the format only affects how long the upload takes.
 
 ## Signing in

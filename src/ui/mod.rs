@@ -62,6 +62,7 @@ pub const ID_ITEM_COPY_LINK: Id = 6104;
 pub const ID_ITEM_PROFILE: Id = 6105;
 pub const ID_ITEM_COPY_TEXT: Id = 6106;
 pub const ID_ITEM_DELETE: Id = 6107;
+pub const ID_ITEM_EDIT: Id = 6108;
 // The open page's buttons and More menu.
 pub const ID_PAGE_PLAY: Id = 6120;
 pub const ID_PAGE_FAVORITE: Id = 6121;
@@ -70,6 +71,8 @@ pub const ID_PAGE_SUBSCRIBE: Id = 6123;
 pub const ID_PAGE_PROFILE: Id = 6124;
 pub const ID_PAGE_COPY_LINK: Id = 6125;
 pub const ID_PAGE_BROWSER: Id = 6126;
+pub const ID_PAGE_EDIT: Id = 6127;
+pub const ID_PAGE_DELETE: Id = 6128;
 
 pub enum Now {
     Audio(Audio),
