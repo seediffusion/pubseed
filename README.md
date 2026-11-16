@@ -35,6 +35,7 @@ When you join a live stream, its audio starts playing and the Live tab turns int
 | Alt+Shift+Left and Right | Skip back and forward |
 | Alt+Shift+Page Up and Page Down | Previous and next in the queue |
 | Alt+Shift+Up and Down | Volume |
+| Alt+. and Alt+, | Faster and slower |
 | Ctrl+Shift+W | What's playing |
 | Ctrl+Shift+R | Read chat aloud on or off |
 | Ctrl+Shift+S | How many people are listening |

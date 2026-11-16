@@ -39,6 +39,8 @@ pub struct Config {
     /// SAPI voice name; empty for the default voice.
     pub voice: String,
     pub voice_rate: i32,
+    /// Playback speed; 1.0 is normal.
+    pub speed: f32,
 }
 
 impl Default for Config {
@@ -54,6 +56,7 @@ impl Default for Config {
             speech_output: SpeechOutput::ScreenReader,
             voice: String::new(),
             voice_rate: 0,
+            speed: 1.0,
         }
     }
 }

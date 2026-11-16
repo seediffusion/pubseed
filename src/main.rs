@@ -10,6 +10,7 @@ mod devalue;
 mod player;
 mod recorder;
 mod speech;
+mod stretch;
 mod ui;
 
 use wxdragon::appearance::Appearance;

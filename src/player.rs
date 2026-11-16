@@ -4,11 +4,12 @@
 //! thread and hands the decoder back to the UI thread, which owns `Player`.
 
 use crate::api::{Api, Result};
+use crate::stretch::Stretch;
 use rodio::{Decoder, DeviceSinkBuilder, MixerDeviceSink, Source};
 use std::fs::File;
 use std::io::{self, Read, Seek, SeekFrom};
 use std::os::windows::fs::FileExt;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
 use std::time::Duration;
 
@@ -171,10 +172,16 @@ pub struct Player {
     generation: u64,
     started: bool,
     pub duration: Option<Duration>,
+    /// The speed, shared with the stretcher of whatever is playing.
+    speed: Arc<AtomicU32>,
+    /// Where the stretcher has reached in the audio, in milliseconds.
+    position_ms: Arc<AtomicU64>,
+    /// Whether what is playing goes through the stretcher. Live streams do not.
+    stretched: bool,
 }
 
 impl Player {
-    pub fn new(volume: u32) -> Self {
+    pub fn new(volume: u32, speed: f32) -> Self {
         let device = DeviceSinkBuilder::open_default_sink().ok();
         let sink = device
             .as_ref()
@@ -185,6 +192,9 @@ impl Player {
             generation: 0,
             started: false,
             duration: None,
+            speed: Arc::new(AtomicU32::new(speed.to_bits())),
+            position_ms: Arc::new(AtomicU64::new(0)),
+            stretched: false,
         };
         player.set_volume(volume);
         player
@@ -197,7 +207,7 @@ impl Player {
     }
 
     /// Plays a decoder opened for `ticket`, unless something newer was begun.
-    pub fn start(&mut self, ticket: u64, decoded: Decoded) -> Result<bool> {
+    pub fn start(&mut self, ticket: u64, decoded: Decoded, live: bool) -> Result<bool> {
         if ticket != self.generation {
             return Ok(false);
         }
@@ -206,7 +216,16 @@ impl Player {
             .as_ref()
             .ok_or("No audio output device was found")?;
         self.duration = decoded.total_duration();
-        sink.append(decoded);
+        self.stretched = !live;
+        if live {
+            sink.append(decoded);
+        } else {
+            sink.append(Stretch::new(
+                decoded,
+                self.speed.clone(),
+                self.position_ms.clone(),
+            ));
+        }
         sink.play();
         self.started = true;
         Ok(true)
@@ -244,7 +263,15 @@ impl Player {
         }
     }
 
+    pub fn set_speed(&self, speed: f32) {
+        self.speed.store(speed.to_bits(), Ordering::Relaxed);
+    }
+
     pub fn position(&self) -> Duration {
+        // Time spent playing is not the place reached once the speed is not 1.
+        if self.stretched {
+            return Duration::from_millis(self.position_ms.load(Ordering::Relaxed));
+        }
         self.sink
             .as_ref()
             .map(|sink| sink.get_pos())

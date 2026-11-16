@@ -45,6 +45,9 @@ pub const ID_QUEUE_NEXT: Id = 6035;
 pub const ID_VOLUME_UP: Id = 6036;
 pub const ID_VOLUME_DOWN: Id = 6037;
 pub const ID_WHATS_PLAYING: Id = 6038;
+pub const ID_FASTER: Id = 6060;
+pub const ID_SLOWER: Id = 6061;
+pub const ID_SPEED_FIRST: Id = 6062; // ..=6068, one for each of playback::SPEEDS
 pub const ID_READ_CHAT: Id = 6040;
 pub const ID_LISTENERS: Id = 6041;
 pub const ID_LEAVE: Id = 6042;
@@ -311,7 +314,7 @@ impl App {
     }
 }
 
-fn build_menu_bar(read_chat: bool) -> MenuBar {
+fn build_menu_bar(read_chat: bool, speed: f32) -> MenuBar {
     let file = Menu::builder()
         .append_item(ID_NEW_AUDIO, "&New audio...	Ctrl+N", "")
         .append_separator()
@@ -352,8 +355,27 @@ fn build_menu_bar(read_chat: bool) -> MenuBar {
         .append_item(ID_VOLUME_UP, "Volume &up\tAlt+Shift+Up", "")
         .append_item(ID_VOLUME_DOWN, "Volume &down\tAlt+Shift+Down", "")
         .append_separator()
+        .append_item(ID_FASTER, "F&aster\tAlt+.", "")
+        .append_item(ID_SLOWER, "S&lower\tAlt+,", "")
+        .append_separator()
         .append_item(ID_WHATS_PLAYING, "&What's playing\tCtrl+Shift+W", "")
         .build();
+    let mut speeds = Menu::builder();
+    for (index, choice) in playback::SPEEDS.iter().enumerate() {
+        let label = if *choice == 1.0 {
+            "1, normal".to_string()
+        } else {
+            choice.to_string()
+        };
+        speeds = speeds.append_radio_item(ID_SPEED_FIRST + index as Id, &label, "");
+    }
+    let speeds = speeds.build();
+    let current = playback::SPEEDS
+        .iter()
+        .position(|choice| (choice - speed).abs() < 0.01)
+        .unwrap_or(2);
+    speeds.check_item(ID_SPEED_FIRST + current as Id, true);
+    player.append_submenu(speeds, "Sp&eed", "");
     let live = Menu::builder()
         .append_check_item(ID_READ_CHAT, "&Read chat aloud\tCtrl+Shift+R", "")
         .append_item(ID_LISTENERS, "&Who's listening\tCtrl+Shift+S", "")
@@ -419,6 +441,9 @@ pub fn dispatch(app: &Rc<App>, id: Id) {
         ID_VOLUME_UP => playback::change_volume(app, 5),
         ID_VOLUME_DOWN => playback::change_volume(app, -5),
         ID_WHATS_PLAYING => playback::whats_playing(app),
+        ID_FASTER => playback::step_speed(app, 1),
+        ID_SLOWER => playback::step_speed(app, -1),
+        ID_SPEED_FIRST..=6068 => playback::set_speed(app, (id - ID_SPEED_FIRST) as usize),
         ID_READ_CHAT => {
             let on = !app.cfg.borrow().read_chat;
             app.cfg.borrow_mut().read_chat = on;
@@ -546,12 +571,12 @@ pub fn build(cfg: Config) {
 
     let status = frame.create_status_bar(3, 0, ID_ANY as Id, "statusBar");
     status.set_status_widths(&[-3, -2, -2]);
-    frame.set_menu_bar(build_menu_bar(cfg.read_chat));
+    frame.set_menu_bar(build_menu_bar(cfg.read_chat, cfg.speed));
     speech::install(frame.get_handle());
 
     let app = Rc::new(App {
         api: Arc::new(Api::new(&cfg.site_url, &cfg.stream_url, cfg.token())),
-        player: RefCell::new(Player::new(cfg.volume)),
+        player: RefCell::new(Player::new(cfg.volume, cfg.speed)),
         cfg: RefCell::new(cfg),
         user: RefCell::new(None),
         now: RefCell::new(None),

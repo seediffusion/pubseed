@@ -32,7 +32,7 @@ fn start(app: &Rc<App>, now: Now, urls: Vec<String>) {
         move |app, opened| {
             let current = app.player.borrow().is_current(ticket);
             let outcome = match opened {
-                Ok(decoded) => app.player.borrow_mut().start(ticket, decoded),
+                Ok(decoded) => app.player.borrow_mut().start(ticket, decoded, live),
                 Err(error) => Err(error),
             };
             match outcome {
@@ -148,6 +148,35 @@ pub fn step_queue(app: &Rc<App>, direction: i64) {
             "Start of the queue"
         }),
     }
+}
+
+/// The speeds on offer, as Ramblio has them.
+pub const SPEEDS: [f32; 7] = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
+
+fn speed_index(app: &App) -> usize {
+    let speed = app.cfg.borrow().speed;
+    SPEEDS
+        .iter()
+        .position(|candidate| (candidate - speed).abs() < 0.01)
+        .unwrap_or(2)
+}
+
+/// Sets the playback speed to one of `SPEEDS`. The pitch stays the same.
+pub fn set_speed(app: &App, index: usize) {
+    let index = index.min(SPEEDS.len() - 1);
+    let speed = SPEEDS[index];
+    app.cfg.borrow_mut().speed = speed;
+    app.player.borrow().set_speed(speed);
+    if let Some(menu_bar) = app.w.frame.get_menu_bar() {
+        menu_bar.check_item(ID_SPEED_FIRST + index as Id, true);
+    }
+    app.notify(&format!("Playback speed {speed}"));
+}
+
+/// Alt+Period and Alt+Comma: one step faster or slower.
+pub fn step_speed(app: &App, change: i32) {
+    let index = (speed_index(app) as i32 + change).clamp(0, SPEEDS.len() as i32 - 1);
+    set_speed(app, index as usize);
 }
 
 pub fn change_volume(app: &App, change: i32) {
