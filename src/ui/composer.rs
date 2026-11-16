@@ -541,6 +541,8 @@ fn publish_audio(app: &Rc<App>, c: &Rc<Composer>) {
                     c.st.borrow_mut().published = true;
                     c.frame.close(true);
                     app.w.frame.raise();
+                    // The list under the new audio's page then has it at the top.
+                    pages::refresh_feeds(app);
                     pages::open(app, app.current_tab(), Kind::Audio(audio_id));
                     app.notify("Published");
                 }

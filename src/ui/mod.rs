@@ -234,6 +234,10 @@ impl App {
             self.notify("Nothing to go back to");
         } else {
             self.remove_page(page.id);
+            // The page underneath may have gone out of date while covered.
+            if let Some(revealed) = self.top(tab) {
+                pages::ensure_loaded(self, &revealed);
+            }
         }
     }
 

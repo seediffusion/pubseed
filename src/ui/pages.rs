@@ -392,6 +392,21 @@ pub fn ensure_loaded(app: &Rc<App>, page: &Rc<Page>) {
     }
 }
 
+/// Marks every list of audios out of date, as after posting one. A list
+/// that is showing reloads now; the rest reload when next shown.
+pub fn refresh_feeds(app: &Rc<App>) {
+    for stack in &app.tabs {
+        for page in stack.borrow().iter() {
+            if matches!(page.kind, Kind::Feed(_)) {
+                page.st.borrow_mut().loaded = false;
+            }
+        }
+    }
+    if let Some(page) = app.current() {
+        ensure_loaded(app, &page);
+    }
+}
+
 fn flatten(comments: Vec<Comment>, depth: usize, into: &mut Vec<Item>) {
     for mut comment in comments {
         let replies = comment.replies.take().unwrap_or_default();
