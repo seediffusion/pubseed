@@ -31,3 +31,4 @@ windows-core = "0.62"
 
 [build-dependencies]
 embed-manifest = "1.5.1"
+winresource = "0.1.34"

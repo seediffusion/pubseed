@@ -213,14 +213,14 @@ pub fn open(app: &Rc<App>) {
 }
 
 impl Composer {
-    fn from_file(&self) -> bool {
+    fn uses_file(&self) -> bool {
         self.from.get_selection() == Some(FROM_FILE)
     }
 
     /// The file that would be published, if there is one.
     fn chosen_audio(&self) -> Option<PathBuf> {
         let st = self.st.borrow();
-        if self.from_file() {
+        if self.uses_file() {
             st.file.as_ref().map(|(path, _)| path.clone())
         } else {
             st.recording
@@ -240,7 +240,7 @@ impl Composer {
 
     /// Brings the controls and the Audio line up to date.
     fn refresh(&self) {
-        let file = self.from_file();
+        let file = self.uses_file();
         let st = self.st.borrow();
         let recording = st.recorder.is_some();
         for (button, shown) in [
@@ -286,7 +286,7 @@ impl Composer {
             // In tens, so a screen reader is not told every percent.
             let percent = upload.sent.load(Ordering::Relaxed) * 100 / upload.total.max(1);
             format!("Uploading {}%", percent.min(100) / 10 * 10)
-        } else if self.from_file() {
+        } else if self.uses_file() {
             match &st.file {
                 Some((path, size)) => format!(
                     "{}, {:.1} MB, ready to publish",
@@ -494,7 +494,7 @@ fn publish_audio(app: &Rc<App>, c: &Rc<Composer>) {
     let problem = if c.st.borrow().recorder.is_some() {
         Some(("Stop recording first", &c.record as &dyn WxWidget))
     } else if c.chosen_audio().is_none() {
-        let control: &dyn WxWidget = if c.from_file() { &c.choose } else { &c.record };
+        let control: &dyn WxWidget = if c.uses_file() { &c.choose } else { &c.record };
         Some(("Add audio first", control))
     } else if title.is_empty() {
         Some(("Add a title", &c.title as &dyn WxWidget))

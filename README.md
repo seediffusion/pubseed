@@ -6,6 +6,12 @@ It was built for screen reader users first. Everything can be done from the keyb
 
 Pubseed is in early development and only runs on Windows for now. Broadcasting your own streams isn't part of it yet; if you want to stream to AudioPub, have a look at [Pubsplash](https://github.com/cha0t1cnu3tral/pubsplash).
 
+## Installing
+
+Download the latest `pubseed-setup` program from the [releases page](https://github.com/seediffusion/pubseed/releases) and run it. It installs Pubseed for everyone on the computer and adds it to the Start menu; if you don't have administrator rights, it offers to install it just for you instead. Running a newer setup program later upgrades the copy you have, and your settings and sign-in are kept.
+
+Pubseed doesn't update itself yet, so check the releases page now and then.
+
 ## Getting around
 
 The window has four tabs: Home, Subscriptions, Live and Notifications. Ctrl+1 to Ctrl+4 jump between them, and the Notifications tab shows how many you haven't read yet.
@@ -79,6 +85,14 @@ cargo build --release
 ```
 
 The first build downloads the wxWidgets source and compiles it, which takes several minutes. Builds after that are quick. `cargo run` starts the app.
+
+To make the setup program, install [Inno Setup 6](https://jrsoftware.org/isinfo.php) and, after a release build, run:
+
+```
+iscc installer\pubseed.iss
+```
+
+It's written to `target\installer`. The version comes from `Cargo.toml`.
 
 `cargo test` runs the offline tests. A couple of tests talk to the real AudioPub site and play audio, so they're skipped by default; run them with `cargo test -- --ignored`.
 

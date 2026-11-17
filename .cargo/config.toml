@@ -1,0 +1,5 @@
+# Link the C runtime into the program, so Pubseed runs on a PC that has never
+# had the Visual C++ redistributable installed. wxDragon builds wxWidgets to
+# match.
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]
