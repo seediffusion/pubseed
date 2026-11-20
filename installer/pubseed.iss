@@ -32,7 +32,8 @@ UninstallDisplayName={#AppName}
 UninstallDisplayIcon={app}\{#AppExe}
 Compression=lzma2
 SolidCompression=yes
-WizardStyle=modern
+; "dynamic" follows the Windows light or dark mode setting.
+WizardStyle=modern dynamic
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 ; Installs for everyone by default, as most Windows programs do, and lets
