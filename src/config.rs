@@ -41,6 +41,8 @@ pub struct Config {
     pub voice_rate: i32,
     /// Playback speed; 1.0 is normal.
     pub speed: f32,
+    /// The folder audio was last saved to; empty until something is saved.
+    pub save_folder: String,
 }
 
 impl Default for Config {
@@ -57,6 +59,7 @@ impl Default for Config {
             voice: String::new(),
             voice_rate: 0,
             speed: 1.0,
+            save_folder: String::new(),
         }
     }
 }

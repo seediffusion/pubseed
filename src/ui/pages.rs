@@ -913,6 +913,7 @@ fn show_item_menu(app: &Rc<App>, page: &Rc<Page>) {
                 "",
             )
             .append_item(ID_ITEM_COPY_LINK, "Copy &link", "")
+            .append_item(ID_ITEM_SAVE, "S&ave audio...", "")
             .append_item(ID_ITEM_PROFILE, "View p&rofile", ""),
         Item::Stream(_) => menu
             .append_item(ID_ITEM_OPEN, "&Join\tEnter", "")
@@ -996,6 +997,7 @@ fn show_more_menu(page: &Page) {
         )
         .append_item(ID_PAGE_PROFILE, "View p&rofile", "")
         .append_item(ID_PAGE_COPY_LINK, "Copy &link", "")
+        .append_item(ID_PAGE_SAVE, "S&ave audio...", "")
         .append_item(ID_PAGE_BROWSER, "Open in your &browser", "");
     if page.st.borrow().can_edit {
         menu = menu.append_item(ID_PAGE_EDIT, "&Edit...", "").append_item(
@@ -1251,6 +1253,70 @@ fn delete_selected(app: &Rc<App>, page: &Rc<Page>) {
     }
 }
 
+/// Asks where to keep a copy of an audio, then downloads it there. The
+/// folder is remembered for next time, as Ramblio does.
+fn save_audio(app: &Rc<App>, audio: &Audio) {
+    let extension = audio.extension.trim_start_matches('.').to_lowercase();
+    let mut name = file_name_for(&audio.title);
+    let wildcard = if extension.is_empty() {
+        "All files (*.*)|*.*".to_string()
+    } else {
+        name = format!("{name}.{extension}");
+        format!("Audio (*.{extension})|*.{extension}|All files (*.*)|*.*")
+    };
+    let folder = app.cfg.borrow().save_folder.clone();
+    let dialog = FileDialog::builder(&app.w.frame)
+        .with_message("Save audio")
+        .with_default_dir(&folder)
+        .with_default_file(&name)
+        .with_wildcard(&wildcard)
+        .with_style(FileDialogStyle::Save | FileDialogStyle::OverwritePrompt)
+        .build();
+    if app.modal(|| dialog.show_modal()) != ID_OK {
+        return;
+    }
+    let Some(path) = dialog.get_path().map(std::path::PathBuf::from) else {
+        return;
+    };
+    if let Some(parent) = path.parent() {
+        let mut cfg = app.cfg.borrow_mut();
+        cfg.save_folder = parent.to_string_lossy().into_owned();
+        cfg.save();
+    }
+    app.notify("Saving");
+    let audio = audio.clone();
+    background(
+        app,
+        move |api| api.save_audio(&audio, &path).map(|()| path),
+        |app, result| match result {
+            Ok(path) => {
+                let name = path.file_name().unwrap_or_default().to_string_lossy();
+                app.notify(&format!("Saved {name}"));
+            }
+            Err(error) => app.notify(&format!("Couldn't save the audio: {error}")),
+        },
+    );
+}
+
+/// A title made safe to use as a Windows file name.
+fn file_name_for(title: &str) -> String {
+    let name: String = title
+        .chars()
+        .map(|c| {
+            if "\\/:*?\"<>|".contains(c) || c.is_control() {
+                '_'
+            } else {
+                c
+            }
+        })
+        .collect();
+    // Windows drops dots and spaces from the end of a name.
+    match name.trim().trim_end_matches(['.', ' ']) {
+        "" => "AudioPub audio".to_string(),
+        name => name.to_string(),
+    }
+}
+
 /// The web links in a comment or chat message, up to as many as the menu has
 /// room for.
 fn row_links(item: &Item) -> Vec<String> {
@@ -1368,6 +1434,16 @@ pub fn command(app: &Rc<App>, page: &Rc<Page>, id: Id) {
         ID_ITEM_DELETE => delete_selected(app, page),
         ID_ITEM_CLEAR_ALL => clear_notifications(app, page),
         ID_ITEM_GO_TO_PARENT => go_to_parent(page),
+        ID_ITEM_SAVE => {
+            if let Some(Item::Audio(audio)) = &item {
+                save_audio(app, audio);
+            }
+        }
+        ID_PAGE_SAVE => {
+            if let Some(audio) = &page_audio {
+                save_audio(app, audio);
+            }
+        }
         ID_ITEM_LINK_FIRST..=ID_ITEM_LINK_LAST => {
             let links = item.as_ref().map(row_links).unwrap_or_default();
             if let Some(url) = links.get((id - ID_ITEM_LINK_FIRST) as usize) {
@@ -1451,6 +1527,12 @@ mod tests {
         assert_eq!(parent_of(&items, 2), Some(1));
         assert_eq!(parent_of(&items, 3), Some(0));
         assert_eq!(parent_of(&items, 4), None);
+    }
+
+    #[test]
+    fn titles_become_file_names_windows_accepts() {
+        assert_eq!(file_name_for("What? A/B: test..."), "What_ A_B_ test");
+        assert_eq!(file_name_for(" ... "), "AudioPub audio");
     }
 
     #[test]

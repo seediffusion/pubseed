@@ -51,6 +51,10 @@ pub struct Audio {
     pub is_favorited: Option<bool>,
     pub created_at: i64,
     pub user: Option<User>,
+    /// Where the original file is on the site, such as `audio/{id}`.
+    pub path: String,
+    /// The original file's extension, with or without its dot.
+    pub extension: String,
 }
 
 #[derive(Deserialize, Clone, Default, Debug)]
@@ -522,6 +526,52 @@ impl Api {
     }
 
     /// Opens an audio file or live stream for playback.
+    /// Downloads an audio's original file to `to`. It is written to a
+    /// `.part` file first, so a download that stops part way never looks
+    /// finished. The errors are worded for the user, as Ramblio's are.
+    pub fn save_audio(&self, audio: &Audio, to: &Path) -> Result<()> {
+        let path = match audio.path.trim_start_matches('/') {
+            "" => format!("audio/{}", audio.id),
+            path => path.to_string(),
+        };
+        let mut response = self
+            .streaming
+            .get(format!("{}/{path}", self.base))
+            .send()
+            .map_err(|_| "You're offline or the server can't be reached".to_string())?;
+        if !response.status().is_success() {
+            return Err(format!(
+                "The server answered {}",
+                response.status().as_u16()
+            ));
+        }
+        let mut part = to.as_os_str().to_owned();
+        part.push(".part");
+        let part = std::path::PathBuf::from(part);
+        let mut file =
+            std::fs::File::create(&part).map_err(|_| "Can't write in that folder".to_string())?;
+        let copied = std::io::copy(&mut response, &mut file);
+        drop(file);
+        let result = match copied {
+            // A failed read comes from the connection; anything else is the disk.
+            Err(error)
+                if error
+                    .get_ref()
+                    .is_some_and(|inner| inner.is::<reqwest::Error>()) =>
+            {
+                Err("You're offline or the server can't be reached".to_string())
+            }
+            Err(_) => Err("The file couldn't be written".to_string()),
+            Ok(_) => {
+                std::fs::rename(&part, to).map_err(|_| "The file couldn't be written".to_string())
+            }
+        };
+        if result.is_err() {
+            let _ = std::fs::remove_file(&part);
+        }
+        result
+    }
+
     pub fn open_audio(&self, url: &str) -> Result<Response> {
         let response = self.streaming.get(url).send().map_err(net)?;
         if !response.status().is_success() {
@@ -658,5 +708,24 @@ mod tests {
         );
         let refused = api.login("nobody@example.invalid", "wrong").unwrap_err();
         assert_eq!(refused, "Invalid email or password");
+    }
+
+    /// Run with `cargo test live_site -- --ignored`.
+    #[test]
+    #[ignore]
+    fn live_site_audio_saves_to_a_file() {
+        let api = Api::new("https://audiopub.site", "https://live.audiopub.site", None);
+        let audio = api.listing(&Source::Home, 0, 1).unwrap().audios.remove(0);
+        assert!(!audio.path.is_empty() && !audio.extension.is_empty());
+        let folder = tempfile::tempdir().unwrap();
+        let to = folder.path().join("saved");
+        api.save_audio(&audio, &to).unwrap();
+        assert!(std::fs::metadata(&to).unwrap().len() > 0);
+        assert!(!folder.path().join("saved.part").exists());
+        let missing = Audio { path: "audio/no-such-file".into(), ..audio };
+        assert_eq!(
+            api.save_audio(&missing, &to).unwrap_err(),
+            "The server answered 404"
+        );
     }
 }
