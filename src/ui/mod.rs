@@ -75,6 +75,7 @@ pub const ID_PAGE_COPY_LINK: Id = 6125;
 pub const ID_PAGE_BROWSER: Id = 6126;
 pub const ID_PAGE_EDIT: Id = 6127;
 pub const ID_PAGE_DELETE: Id = 6128;
+pub const ID_PAGE_COMMENT_NOTIFICATIONS: Id = 6129;
 
 pub enum Now {
     Audio(Audio),

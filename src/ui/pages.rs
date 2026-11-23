@@ -172,6 +172,8 @@ pub struct State {
     profile: Option<Profile>,
     /// Whether the signed-in user subscribes to the uploader or profile.
     subscribed: bool,
+    /// Whether the signed-in user is told about new comments on the audio.
+    following: bool,
     /// The comment being replied to: its id and its author's name.
     reply_to: Option<(String, String)>,
     /// Whether the signed-in user may edit or delete the page's audio, and
@@ -673,6 +675,7 @@ pub fn load(app: &Rc<App>, page: &Rc<Page>, more: bool) {
                             flatten(loaded.comments, 0, &mut st.items);
                             st.audio = Some(audio);
                             st.subscribed = loaded.is_subscribed;
+                            st.following = loaded.is_following;
                             st.can_edit = loaded.can_edit;
                             st.remaining_edits = loaded.remaining_edits;
                         }
@@ -909,11 +912,8 @@ fn show_item_menu(app: &Rc<App>, page: &Rc<Page>) {
         Item::Comment(comment, depth) => {
             let mut menu = menu.append_item(ID_ITEM_OPEN, "&Reply\tEnter", "");
             if *depth > 0 {
-                menu = menu.append_item(
-                    ID_ITEM_GO_TO_PARENT,
-                    "&Go to the comment it replies to",
-                    "",
-                );
+                menu =
+                    menu.append_item(ID_ITEM_GO_TO_PARENT, "&Go to the comment it replies to", "");
             }
             let menu = menu
                 .append_item(ID_ITEM_COPY_TEXT, "&Copy text", "")
@@ -968,6 +968,14 @@ fn show_more_menu(page: &Page) {
     };
     let mut menu = Menu::builder()
         .append_item(ID_PAGE_SUBSCRIBE, &subscribe, "")
+        .append_item(
+            ID_PAGE_COMMENT_NOTIFICATIONS,
+            &format!(
+                "Comment &notifications: {}",
+                on_off(page.st.borrow().following)
+            ),
+            "",
+        )
         .append_item(ID_PAGE_PROFILE, "View p&rofile", "")
         .append_item(ID_PAGE_COPY_LINK, "Copy &link", "")
         .append_item(ID_PAGE_BROWSER, "Open in your &browser", "");
@@ -1005,6 +1013,31 @@ fn toggle_favorite(app: &Rc<App>, page: &Page, audio: Audio) {
                         audio.favorite_count += if favorite { 1 } else { -1 };
                     });
                 });
+            }
+        },
+    );
+}
+
+fn on_off(on: bool) -> &'static str {
+    if on { "on" } else { "off" }
+}
+
+/// Turns notifications about new comments on the page's audio on or off.
+fn toggle_following(app: &Rc<App>, page: &Page) {
+    let Kind::Audio(audio_id) = &page.kind else {
+        return;
+    };
+    let audio_id = audio_id.clone();
+    let follow = !page.st.borrow().following;
+    let id = page.id;
+    background(
+        app,
+        move |api| api.set_following(&audio_id, follow),
+        move |app, result| match result {
+            Err(error) => app.notify(&format!("Couldn't change comment notifications: {error}")),
+            Ok(()) => {
+                app.notify(&format!("Comment notifications {}", on_off(follow)));
+                with_page(id, |_, page| page.st.borrow_mut().following = follow);
             }
         },
     );
@@ -1314,6 +1347,7 @@ pub fn command(app: &Rc<App>, page: &Rc<Page>, id: Id) {
         }
         ID_PAGE_MORE => show_more_menu(page),
         ID_PAGE_SUBSCRIBE => toggle_subscribe(app, page),
+        ID_PAGE_COMMENT_NOTIFICATIONS => toggle_following(app, page),
         ID_PAGE_PROFILE => profile(
             page_audio
                 .as_ref()

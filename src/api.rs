@@ -131,6 +131,8 @@ pub struct AudioPage {
     pub audio: Audio,
     pub comments: Vec<Comment>,
     pub is_subscribed: bool,
+    /// Whether the signed-in user is told about new comments on it.
+    pub is_following: bool,
     /// Whether the signed-in user may edit or delete this audio.
     pub can_edit: bool,
     /// How many edits they have left; `None` for no limit.
@@ -349,6 +351,7 @@ impl Api {
             audio: take(&mut data, "audio"),
             comments: take(&mut data, "comments"),
             is_subscribed: take(&mut data, "isSubscribed"),
+            is_following: take(&mut data, "isFollowing"),
             can_edit: take(&mut data, "canEdit"),
             remaining_edits: take(&mut data, "remainingEdits"),
         })
@@ -388,6 +391,12 @@ impl Api {
 
     pub fn set_favorite(&self, audio_id: &str, favorite: bool) -> Result<()> {
         let name = if favorite { "favorite" } else { "unfavorite" };
+        self.action_ok(&format!("/listen/{audio_id}"), name, &[])
+    }
+
+    /// Turns notifications about new comments on an audio on or off.
+    pub fn set_following(&self, audio_id: &str, follow: bool) -> Result<()> {
+        let name = if follow { "follow" } else { "unfollow" };
         self.action_ok(&format!("/listen/{audio_id}"), name, &[])
     }
 
