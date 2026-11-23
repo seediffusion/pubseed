@@ -116,6 +116,17 @@ pub fn stop(app: &App) {
     *app.now.borrow_mut() = None;
 }
 
+/// The Stop command, which says what it did, as Ramblio does.
+pub fn stop_command(app: &App) {
+    let had_something = app.now.borrow().is_some();
+    stop(app);
+    app.notify(if had_something {
+        "Stopped"
+    } else {
+        "Nothing playing"
+    });
+}
+
 pub fn skip(app: &App, direction: i64) {
     let player = app.player.borrow();
     if matches!(&*app.now.borrow(), Some(Now::Live(_))) {

@@ -436,7 +436,7 @@ pub fn dispatch(app: &Rc<App>, id: Id) {
         ID_NEXT_REGION => app.move_region(true),
         ID_PREVIOUS_REGION => app.move_region(false),
         ID_PLAY_PAUSE => playback::toggle(app),
-        ID_STOP => playback::stop(app),
+        ID_STOP => playback::stop_command(app),
         ID_SKIP_BACK => playback::skip(app, -1),
         ID_SKIP_FORWARD => playback::skip(app, 1),
         ID_QUEUE_PREVIOUS => playback::step_queue(app, -1),
