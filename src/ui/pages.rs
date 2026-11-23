@@ -946,6 +946,15 @@ fn show_item_menu(app: &Rc<App>, page: &Rc<Page>) {
             .append_item(ID_ITEM_DELETE, "&Delete\tDelete", "")
             .append_item(ID_ITEM_CLEAR_ALL, "C&lear all...", ""),
     };
+    let links = row_links(&item);
+    for (index, url) in links.iter().enumerate() {
+        let label = if links.len() == 1 {
+            "Open lin&k".to_string()
+        } else {
+            format!("Open link {}: {url}", index + 1)
+        };
+        menu = menu.append_item(ID_ITEM_LINK_FIRST + index as Id, &label, "");
+    }
     if let Item::Audio(audio) = &item
         && is_own(app, audio)
     {
@@ -1242,6 +1251,36 @@ fn delete_selected(app: &Rc<App>, page: &Rc<Page>) {
     }
 }
 
+/// The web links in a comment or chat message, up to as many as the menu has
+/// room for.
+fn row_links(item: &Item) -> Vec<String> {
+    match item {
+        Item::Comment(comment, _) => links_in(&comment.content),
+        Item::Chat(chat) => links_in(&chat.content),
+        _ => Vec::new(),
+    }
+}
+
+fn links_in(text: &str) -> Vec<String> {
+    let mut links: Vec<String> = Vec::new();
+    for word in text.split_whitespace() {
+        let Some(start) = word.find("https://").or_else(|| word.find("http://")) else {
+            continue;
+        };
+        // Punctuation after a link belongs to the sentence, not the link.
+        let url =
+            word[start..].trim_end_matches(['.', ',', ';', ':', '!', '?', ')', ']', '"', '\'']);
+        let count = ID_ITEM_LINK_LAST - ID_ITEM_LINK_FIRST + 1;
+        if url.len() > "https://".len()
+            && !links.iter().any(|seen| seen == url)
+            && links.len() < count as usize
+        {
+            links.push(url.to_string());
+        }
+    }
+    links
+}
+
 /// Selects the comment the selected reply answers. Replies follow the
 /// comment they answer, so it is the nearest one above, a level out.
 fn go_to_parent(page: &Page) {
@@ -1329,6 +1368,12 @@ pub fn command(app: &Rc<App>, page: &Rc<Page>, id: Id) {
         ID_ITEM_DELETE => delete_selected(app, page),
         ID_ITEM_CLEAR_ALL => clear_notifications(app, page),
         ID_ITEM_GO_TO_PARENT => go_to_parent(page),
+        ID_ITEM_LINK_FIRST..=ID_ITEM_LINK_LAST => {
+            let links = item.as_ref().map(row_links).unwrap_or_default();
+            if let Some(url) = links.get((id - ID_ITEM_LINK_FIRST) as usize) {
+                dialogs::open_link(app, url);
+            }
+        }
         ID_ITEM_EDIT => {
             if let Some(Item::Audio(audio)) = item {
                 edit_audio(app, page, audio);
@@ -1406,5 +1451,16 @@ mod tests {
         assert_eq!(parent_of(&items, 2), Some(1));
         assert_eq!(parent_of(&items, 3), Some(0));
         assert_eq!(parent_of(&items, 4), None);
+    }
+
+    #[test]
+    fn links_are_found_without_the_punctuation_around_them() {
+        assert_eq!(
+            links_in(
+                "See (https://example.com/a?b=1), or http://x.org. Again: https://example.com/a?b=1"
+            ),
+            ["https://example.com/a?b=1", "http://x.org"]
+        );
+        assert!(links_in("No links here, just https:// on its own").is_empty());
     }
 }

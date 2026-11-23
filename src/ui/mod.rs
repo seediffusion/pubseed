@@ -65,6 +65,9 @@ pub const ID_ITEM_DELETE: Id = 6107;
 pub const ID_ITEM_EDIT: Id = 6108;
 pub const ID_ITEM_CLEAR_ALL: Id = 6109;
 pub const ID_ITEM_GO_TO_PARENT: Id = 6110;
+/// "Open link" on a row, one id for each link in it.
+pub const ID_ITEM_LINK_FIRST: Id = 6140;
+pub const ID_ITEM_LINK_LAST: Id = 6149;
 // The open page's buttons and More menu.
 pub const ID_PAGE_PLAY: Id = 6120;
 pub const ID_PAGE_FAVORITE: Id = 6121;

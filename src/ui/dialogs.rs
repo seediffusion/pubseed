@@ -26,6 +26,29 @@ pub fn confirm(app: &App, title: &str, question: &str) -> bool {
     app.modal(|| dialog.show_modal()) == ID_YES
 }
 
+/// Opens a link from someone's comment or message in the browser, once the
+/// user has seen where it goes. The wording is Ramblio's.
+pub fn open_link(app: &App, url: &str) {
+    let dialog = MessageDialog::builder(
+        &app.w.frame,
+        &format!("You are about to open an external link:\n\n{url}"),
+        "External link warning",
+    )
+    .with_style(
+        MessageDialogStyle::OK | MessageDialogStyle::Cancel | MessageDialogStyle::IconWarning,
+    )
+    .build();
+    dialog.set_ok_cancel_labels("Open link", "Cancel");
+    if app.modal(|| dialog.show_modal()) == ID_OK
+        && !wxdragon::utils::launch_default_browser(
+            url,
+            wxdragon::utils::BrowserLaunchFlags::Default,
+        )
+    {
+        app.notify("Couldn't open the link");
+    }
+}
+
 pub fn search(app: &Rc<App>) {
     let dialog = TextEntryDialog::builder(&app.w.frame, "Search for audios", "Search").build();
     if app.modal(|| dialog.show_modal()) != ID_OK {
