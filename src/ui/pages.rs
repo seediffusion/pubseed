@@ -715,13 +715,22 @@ fn show_profile(page: &Page) {
 }
 
 fn load_more_at_end(app: &Rc<App>, page: &Rc<Page>) {
-    let at_end = {
+    let (at_end, has_more) = {
         let st = page.st.borrow();
-        st.has_more && !st.loading && page.selected() == Some(st.items.len().saturating_sub(1))
+        let last = !st.items.is_empty() && page.selected() == Some(st.items.len() - 1);
+        (last && !st.loading, st.has_more)
     };
-    if at_end && matches!(page.kind, Kind::Feed(_)) {
+    if !at_end || !matches!(page.kind, Kind::Feed(_)) {
+        return;
+    }
+    if has_more {
         app.notify("Loading more");
         load(app, page, true);
+    } else {
+        // Said after the row rather than over it, as Ramblio's comes once
+        // it has asked for more and found none.
+        app.w.status.set_status_text("No more audios", 0);
+        crate::speech::announce("No more audios", false);
     }
 }
 
