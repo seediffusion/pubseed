@@ -317,7 +317,7 @@ impl App {
     }
 }
 
-fn build_menu_bar(read_chat: bool, speed: f32) -> MenuBar {
+fn build_menu_bar(read_chat: bool, speed: f32, skip_seconds: u32) -> MenuBar {
     let file = Menu::builder()
         .append_item(ID_NEW_AUDIO, "&New audio...	Ctrl+N", "")
         .append_separator()
@@ -350,8 +350,8 @@ fn build_menu_bar(read_chat: bool, speed: f32) -> MenuBar {
         .append_item(ID_PLAY_PAUSE, "&Play or pause\tCtrl+P", "")
         .append_item(ID_STOP, "S&top\tCtrl+.", "")
         .append_separator()
-        .append_item(ID_SKIP_BACK, "Skip &back\tAlt+Shift+Left", "")
-        .append_item(ID_SKIP_FORWARD, "Skip &forward\tAlt+Shift+Right", "")
+        .append_item(ID_SKIP_BACK, &playback::skip_label(-1, skip_seconds), "")
+        .append_item(ID_SKIP_FORWARD, &playback::skip_label(1, skip_seconds), "")
         .append_item(ID_QUEUE_PREVIOUS, "P&revious in queue\tAlt+Shift+PgUp", "")
         .append_item(ID_QUEUE_NEXT, "&Next in queue\tAlt+Shift+PgDn", "")
         .append_separator()
@@ -577,7 +577,7 @@ pub fn build(cfg: Config) {
 
     let status = frame.create_status_bar(3, 0, ID_ANY as Id, "statusBar");
     status.set_status_widths(&[-3, -2, -2]);
-    frame.set_menu_bar(build_menu_bar(cfg.read_chat, cfg.speed));
+    frame.set_menu_bar(build_menu_bar(cfg.read_chat, cfg.speed, cfg.skip_seconds));
     speech::install(frame.get_handle());
 
     let app = Rc::new(App {

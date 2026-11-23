@@ -139,6 +139,16 @@ pub fn skip(app: &App, direction: i64) {
     }
 }
 
+/// The Player menu's label for a skip, which says how far it goes, as
+/// Ramblio's does.
+pub fn skip_label(direction: i64, seconds: u32) -> String {
+    if direction < 0 {
+        format!("&Back {seconds} seconds\tAlt+Shift+Left")
+    } else {
+        format!("&Forward {seconds} seconds\tAlt+Shift+Right")
+    }
+}
+
 pub fn step_queue(app: &Rc<App>, direction: i64) {
     let next = {
         let mut queue = app.queue.borrow_mut();

@@ -271,6 +271,11 @@ pub fn settings(app: &Rc<App>) {
         cfg.save();
         if let Some(menu_bar) = app.w.frame.get_menu_bar() {
             menu_bar.check_item(ID_READ_CHAT, cfg.read_chat);
+            for (id, direction) in [(ID_SKIP_BACK, -1), (ID_SKIP_FORWARD, 1)] {
+                if let Some(item) = menu_bar.find_item(id) {
+                    item.set_label(&playback::skip_label(direction, cfg.skip_seconds));
+                }
+            }
         }
     }
     form.dialog.destroy();
