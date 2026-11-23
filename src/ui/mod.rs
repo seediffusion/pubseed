@@ -64,6 +64,7 @@ pub const ID_ITEM_COPY_TEXT: Id = 6106;
 pub const ID_ITEM_DELETE: Id = 6107;
 pub const ID_ITEM_EDIT: Id = 6108;
 pub const ID_ITEM_CLEAR_ALL: Id = 6109;
+pub const ID_ITEM_GO_TO_PARENT: Id = 6110;
 // The open page's buttons and More menu.
 pub const ID_PAGE_PLAY: Id = 6120;
 pub const ID_PAGE_FAVORITE: Id = 6121;

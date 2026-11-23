@@ -906,9 +906,16 @@ fn show_item_menu(app: &Rc<App>, page: &Rc<Page>) {
             .append_item(ID_ITEM_OPEN, "&Join\tEnter", "")
             .append_item(ID_ITEM_COPY_LINK, "Copy &link", "")
             .append_item(ID_ITEM_PROFILE, "View p&rofile", ""),
-        Item::Comment(comment, _) => {
+        Item::Comment(comment, depth) => {
+            let mut menu = menu.append_item(ID_ITEM_OPEN, "&Reply\tEnter", "");
+            if *depth > 0 {
+                menu = menu.append_item(
+                    ID_ITEM_GO_TO_PARENT,
+                    "&Go to the comment it replies to",
+                    "",
+                );
+            }
             let menu = menu
-                .append_item(ID_ITEM_OPEN, "&Reply\tEnter", "")
                 .append_item(ID_ITEM_COPY_TEXT, "&Copy text", "")
                 .append_item(ID_ITEM_PROFILE, "View p&rofile", "");
             let mine = app
@@ -1193,6 +1200,27 @@ fn delete_selected(app: &Rc<App>, page: &Rc<Page>) {
     }
 }
 
+/// Selects the comment the selected reply answers. Replies follow the
+/// comment they answer, so it is the nearest one above, a level out.
+fn go_to_parent(page: &Page) {
+    let Some(index) = page.selected() else {
+        return;
+    };
+    let parent = parent_of(&page.st.borrow().items, index);
+    if let Some(parent) = parent {
+        page.list.set_selection(parent as u32, true);
+    }
+}
+
+fn parent_of(items: &[Item], index: usize) -> Option<usize> {
+    let &Item::Comment(_, depth) = items.get(index)? else {
+        return None;
+    };
+    items[..index]
+        .iter()
+        .rposition(|item| matches!(item, Item::Comment(_, outer) if outer + 1 == depth))
+}
+
 /// Deletes every notification, after asking.
 fn clear_notifications(app: &Rc<App>, page: &Rc<Page>) {
     if !dialogs::confirm(
@@ -1258,6 +1286,7 @@ pub fn command(app: &Rc<App>, page: &Rc<Page>, id: Id) {
         },
         ID_ITEM_DELETE => delete_selected(app, page),
         ID_ITEM_CLEAR_ALL => clear_notifications(app, page),
+        ID_ITEM_GO_TO_PARENT => go_to_parent(page),
         ID_ITEM_EDIT => {
             if let Some(Item::Audio(audio)) = item {
                 edit_audio(app, page, audio);
@@ -1317,5 +1346,22 @@ pub fn poll_unread(app: &Rc<App>) {
                 }
             },
         );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_reply_goes_to_the_comment_it_answers() {
+        let comment = |depth| Item::Comment(Comment::default(), depth);
+        // A thread, a reply to it with its own reply, then a second reply.
+        let items = [comment(0), comment(1), comment(2), comment(1), comment(0)];
+        assert_eq!(parent_of(&items, 0), None);
+        assert_eq!(parent_of(&items, 1), Some(0));
+        assert_eq!(parent_of(&items, 2), Some(1));
+        assert_eq!(parent_of(&items, 3), Some(0));
+        assert_eq!(parent_of(&items, 4), None);
     }
 }
