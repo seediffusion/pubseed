@@ -429,6 +429,9 @@ pub fn dispatch(app: &Rc<App>, id: Id) {
             }
             None => app.notify("Sign in to see your profile. Use File, Sign in."),
         },
+        ID_FAVORITES if app.user.borrow().is_none() => {
+            app.notify("Sign in to see your favorites. Use File, Sign in.");
+        }
         ID_FAVORITES => {
             pages::open(app, app.current_tab(), Kind::Feed(Source::Favorites));
         }
