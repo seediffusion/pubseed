@@ -422,6 +422,11 @@ impl Api {
         self.action_ok("/notifications", "delete", &[("id", id)])
     }
 
+    /// Deletes every notification.
+    pub fn clear_notifications(&self) -> Result<()> {
+        self.action_ok("/notifications", "clear_all", &[])
+    }
+
     /// Uploads a new audio and returns its id. `sent` counts the bytes of
     /// the file sent so far.
     pub fn upload(

@@ -927,7 +927,8 @@ fn show_item_menu(app: &Rc<App>, page: &Rc<Page>) {
             .append_item(ID_ITEM_PROFILE, "View p&rofile", ""),
         Item::Notification(_) => menu
             .append_item(ID_ITEM_OPEN, "&Open\tEnter", "")
-            .append_item(ID_ITEM_DELETE, "&Delete\tDelete", ""),
+            .append_item(ID_ITEM_DELETE, "&Delete\tDelete", "")
+            .append_item(ID_ITEM_CLEAR_ALL, "C&lear all...", ""),
     };
     if let Item::Audio(audio) = &item
         && is_own(app, audio)
@@ -1192,6 +1193,29 @@ fn delete_selected(app: &Rc<App>, page: &Rc<Page>) {
     }
 }
 
+/// Deletes every notification, after asking.
+fn clear_notifications(app: &Rc<App>, page: &Rc<Page>) {
+    if !dialogs::confirm(
+        app,
+        "Clear all",
+        "Clear all your notifications? This can't be undone.",
+    ) {
+        return;
+    }
+    let id = page.id;
+    background(
+        app,
+        |api| api.clear_notifications(),
+        move |app, result| match result {
+            Err(error) => app.notify(&error),
+            Ok(()) => with_page(id, |app, page| {
+                app.notify("Notifications cleared");
+                load(app, page, false);
+            }),
+        },
+    );
+}
+
 /// A command on the selected row, or on the page's own buttons.
 pub fn command(app: &Rc<App>, page: &Rc<Page>, id: Id) {
     let item = page.selected_item();
@@ -1233,6 +1257,7 @@ pub fn command(app: &Rc<App>, page: &Rc<Page>, id: Id) {
             _ => {}
         },
         ID_ITEM_DELETE => delete_selected(app, page),
+        ID_ITEM_CLEAR_ALL => clear_notifications(app, page),
         ID_ITEM_EDIT => {
             if let Some(Item::Audio(audio)) = item {
                 edit_audio(app, page, audio);

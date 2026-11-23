@@ -47,7 +47,7 @@ When you join a live stream, its audio starts playing and the Live tab turns int
 | Ctrl+Shift+S | How many people are listening |
 | Ctrl+Shift+L | Leave the stream |
 
-In a list, Left and Right skip through whatever is playing and Delete removes your own comment or a notification. On the Position slider, the arrows move 5 seconds, Page Up and Page Down move 30, Home and End go to the start and end, and the number keys jump through the audio (5 is halfway).
+In a list, Left and Right skip through whatever is playing and Delete removes your own comment or a notification, and Clear all on a notification's menu removes every one of them. On the Position slider, the arrows move 5 seconds, Page Up and Page Down move 30, Home and End go to the start and end, and the number keys jump through the audio (5 is halfway).
 
 ## Posting audio
 
