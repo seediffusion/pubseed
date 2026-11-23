@@ -31,4 +31,5 @@ windows-core = "0.62"
 
 [build-dependencies]
 embed-manifest = "1.5.1"
+shipfitter = { version = "0.2.5", features = ["docs"] }
 winresource = "0.1.34"

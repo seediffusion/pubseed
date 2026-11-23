@@ -14,6 +14,8 @@ Pubseed doesn't update itself yet, so check the releases page now and then.
 
 ## Getting around
 
+Pubseed has its own help page, which you can open with F1 or from the Help menu. It goes through everything in more detail than this readme.
+
 The window has four tabs: Home, Subscriptions, Live and Notifications. Ctrl+1 to Ctrl+4 jump between them, and the Notifications tab shows how many you haven't read yet.
 
 Pages open inside the tab you're on, a bit like a web browser. Press Enter on an upload and its page opens with the description, Play, Favorite and More buttons, the comments, and a box for writing your own. Escape or Alt+Left takes you back to where you were. F6 moves between the tab strip, the page and the player at the bottom of the window.
@@ -46,6 +48,7 @@ When you join a live stream, its audio starts playing and the Live tab turns int
 | Ctrl+Shift+R | Read chat aloud on or off |
 | Ctrl+Shift+S | How many people are listening |
 | Ctrl+Shift+L | Leave the stream |
+| F1 | Pubseed help |
 
 In a list, Left and Right skip through whatever is playing and Delete removes your own comment or a notification, and Clear all on a notification's menu removes every one of them. Save audio, on an upload's menu or under More on its page, keeps a copy of the original file wherever you choose, and remembers the folder for next time. When a comment or chat message has a web link in it, its menu has Open link, which shows you the whole address before opening it in your browser. On the Position slider, the arrows move 5 seconds, Page Up and Page Down move 30, Home and End go to the start and end, and the number keys jump through the audio (5 is halfway).
 

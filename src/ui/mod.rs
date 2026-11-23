@@ -53,6 +53,7 @@ pub const ID_LISTENERS: Id = 6041;
 pub const ID_LEAVE: Id = 6042;
 pub const ID_WEBSITE: Id = 6050;
 pub const ID_ABOUT: Id = 6051;
+pub const ID_HELP: Id = 6052;
 // The selected row's menu.
 pub const ID_ITEM_PLAY: Id = 6100;
 pub const ID_ITEM_PLAY_ALL: Id = 6101;
@@ -395,6 +396,7 @@ fn build_menu_bar(read_chat: bool, speed: f32, skip_seconds: u32) -> MenuBar {
         .build();
     live.check_item(ID_READ_CHAT, read_chat);
     let help = Menu::builder()
+        .append_item(ID_HELP, "Pubseed &help\tF1", "")
         .append_item(ID_WEBSITE, "Open the AudioPub &website", "")
         .append_item(ID_ABOUT, "&About Pubseed", "")
         .build();
@@ -472,6 +474,7 @@ pub fn dispatch(app: &Rc<App>, id: Id) {
         }
         ID_LISTENERS => live::listeners(app),
         ID_LEAVE => live::leave(app, "Left the stream"),
+        ID_HELP => open_help(app),
         ID_WEBSITE => open_in_browser(&app.api.base),
         ID_ABOUT => dialogs::message(
             app,
@@ -485,6 +488,31 @@ pub fn dispatch(app: &Rc<App>, id: Id) {
         _ => {
             if let Some(page) = app.current() {
                 pages::command(app, &page, id);
+            }
+        }
+    }
+}
+
+/// Opens the help page beside the program in the browser. The build makes it
+/// from `docs/help.md`.
+fn open_help(app: &App) {
+    let page = std::env::current_exe()
+        .map(|exe| exe.with_file_name("help.html"))
+        .ok()
+        .filter(|path| path.exists());
+    match page {
+        None => dialogs::message(
+            app,
+            "Pubseed help",
+            "The help is missing. Reinstalling Pubseed puts it back.",
+        ),
+        Some(page) => {
+            let opened = wxdragon::utils::launch_default_browser(
+                &page.to_string_lossy(),
+                wxdragon::utils::BrowserLaunchFlags::Default,
+            );
+            if !opened {
+                app.notify("Couldn't open the help");
             }
         }
     }
