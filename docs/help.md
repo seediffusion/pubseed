@@ -126,6 +126,22 @@ File, Settings (Ctrl+Comma) has:
 
 Settings are kept in `%APPDATA%\pubseed\settings.json`.
 
+## Global hotkeys
+
+Global hotkeys work while another program is in front, so you can control Pubseed without switching to it. File, Global hotkeys lists them. Choose one and press Set to give it a key, Clear to turn it off, or Reset to give it back its usual key. A global hotkey needs at least one of Ctrl, Alt or the Windows key, so it doesn't take a key other programs need.
+
+| Hotkey | Usual key | On to begin with |
+| --- | --- | --- |
+| Show or hide Pubseed | Ctrl+Alt+Shift+R | Yes |
+| Play or pause | Ctrl+Alt+Shift+P | No |
+| Next in queue | Ctrl+Alt+Shift+Right | No |
+| Previous in queue | Ctrl+Alt+Shift+Left | No |
+| Read the last announcement | Ctrl+Alt+Shift+L | No |
+
+Show or hide Pubseed hides the window when it's in front, and brings it back otherwise. While it's hidden, anything playing keeps going, and Pubseed's icon in the notification area brings the window back too. Its menu has Restore and Exit.
+
+If another program already uses a hotkey's key, Pubseed tells you, and that hotkey won't work until you give it a different key.
+
 ## Keyboard shortcuts
 
 Every shortcut is also shown on the menu next to its command.

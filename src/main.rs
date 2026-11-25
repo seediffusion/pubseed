@@ -20,7 +20,7 @@ fn main() {
     match doorbell::ring("pubseed", &[] as &[&str]) {
         Ok(doorbell::Ring::Delivered) => return,
         Ok(doorbell::Ring::First(door)) => {
-            door.listen(|_| wxdragon::call_after(Box::new(ui::bring_to_front)));
+            door.listen(|_| wx_utils::post_to_ui(ui::bring_to_front));
         }
         // If it can't tell, starting a second copy is better than none.
         Err(_) => {}

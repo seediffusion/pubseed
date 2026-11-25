@@ -49,6 +49,9 @@ When you join a live stream, its audio starts playing and the Live tab turns int
 | Ctrl+Shift+S | How many people are listening |
 | Ctrl+Shift+L | Leave the stream |
 | F1 | Pubseed help |
+| Ctrl+Alt+Shift+R | Show or hide Pubseed, from any program |
+
+File, Global hotkeys sets keys that work while another program is in front: show or hide Pubseed, play or pause, next and previous in the queue, and reading the last announcement again. Only show or hide is on to begin with.
 
 In a list, Left and Right skip through whatever is playing and Delete removes your own comment or a notification, and Clear all on a notification's menu removes every one of them. Save audio, on an upload's menu or under More on its page, keeps a copy of the original file wherever you choose, and remembers the folder for next time. When a comment or chat message has a web link in it, its menu has Open link, which shows you the whole address before opening it in your browser. On the Position slider, the arrows move 5 seconds, Page Up and Page Down move 30, Home and End go to the start and end, and the number keys jump through the audio (5 is halfway).
 

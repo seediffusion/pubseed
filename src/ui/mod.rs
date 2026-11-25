@@ -4,6 +4,7 @@
 
 pub mod composer;
 pub mod dialogs;
+pub mod hotkeys;
 pub mod live;
 pub mod pages;
 pub mod playback;
@@ -16,6 +17,7 @@ use pages::{Kind, Page};
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use ship_shape::ui::CheckTrigger;
+use wx_utils::tray::{Tray, Visibility};
 use ship_shape::{UpdateChannel, UpdaterConfig};
 use std::sync::Arc;
 use wxdragon::prelude::*;
@@ -30,6 +32,7 @@ pub const ID_SIGN_OUT: Id = 6002;
 pub const ID_SETTINGS: Id = 6003;
 pub const ID_EXIT: Id = 6004;
 pub const ID_NEW_AUDIO: Id = 6005;
+pub const ID_HOTKEYS: Id = 6007;
 pub const ID_TAB_FIRST: Id = 6010; // ..=6013
 pub const ID_REFRESH: Id = 6014;
 pub const ID_BACK: Id = 6020;
@@ -125,6 +128,12 @@ pub struct App {
     modal: Cell<u32>,
     ticks: Cell<u32>,
     timer: RefCell<Option<Timer<Frame>>>,
+    /// The last thing `notify` said, for the hotkey that says it again.
+    pub last_said: RefCell<String>,
+    /// Hides the window, with any dialog over it, and brings it back.
+    visibility: Rc<Visibility>,
+    /// The notification area icon, which is only up while the window is hidden.
+    tray: RefCell<Option<Tray>>,
 }
 
 thread_local! {
@@ -144,11 +153,11 @@ pub fn background<T: Send + 'static>(
     let api = app.api.clone();
     std::thread::spawn(move || {
         let result = work(&api);
-        wxdragon::call_after(Box::new(move || {
+        wx_utils::post_to_ui(move || {
             if let Some(app) = self::app() {
                 done(&app, result);
             }
-        }));
+        });
         // The queue is drained when the event loop goes idle.
         wxdragon::app::wake_up_idle();
     });
@@ -177,6 +186,7 @@ impl App {
     pub fn notify(&self, text: &str) {
         self.w.status.set_status_text(text, 0);
         speech::announce(text, true);
+        *self.last_said.borrow_mut() = text.to_string();
     }
 
     /// Reads a chat message with whichever output Settings chose.
@@ -298,6 +308,29 @@ impl App {
     }
 
     /// Runs one of our modal dialogs, so Escape inside it is not taken for Back.
+    /// Hides the window if it's in front, with an icon in the notification
+    /// area to bring it back, and otherwise brings it forward.
+    pub fn show_or_hide(&self) {
+        self.visibility.toggle();
+        self.show_tray(!self.w.frame.is_shown());
+    }
+
+    /// Brings the window back, from hiding or from behind other windows.
+    pub fn come_forward(&self) {
+        self.visibility.come_forward();
+        self.show_tray(false);
+    }
+
+    fn show_tray(&self, show: bool) {
+        if let Some(tray) = self.tray.borrow().as_ref() {
+            if show {
+                tray.show();
+            } else {
+                tray.hide();
+            }
+        }
+    }
+
     pub fn modal<T>(&self, show: impl FnOnce() -> T) -> T {
         self.modal.set(self.modal.get() + 1);
         let result = show();
@@ -337,6 +370,7 @@ fn build_menu_bar(read_chat: bool, speed: f32, skip_seconds: u32) -> MenuBar {
         .append_item(ID_SIGN_OUT, "Sign &out", "")
         .append_separator()
         .append_item(ID_SETTINGS, "&Settings...\tCtrl+,", "")
+        .append_item(ID_HOTKEYS, "Global &hotkeys...", "")
         .append_separator()
         .append_item(ID_EXIT, "E&xit\tCtrl+Q", "")
         .build();
@@ -418,6 +452,7 @@ fn build_menu_bar(read_chat: bool, speed: f32, skip_seconds: u32) -> MenuBar {
 pub fn dispatch(app: &Rc<App>, id: Id) {
     match id {
         ID_NEW_AUDIO => composer::open(app),
+        ID_HOTKEYS => hotkeys::edit(app),
         ID_SIGN_IN => dialogs::sign_in(app),
         ID_SIGN_OUT => {
             app.api.sign_out();
@@ -673,6 +708,9 @@ pub fn build(cfg: Config) {
         modal: Cell::new(0),
         ticks: Cell::new(0),
         timer: RefCell::new(None),
+        last_said: RefCell::new(String::new()),
+        visibility: Rc::new(Visibility::new(frame)),
+        tray: RefCell::new(None),
     });
     APP.with(|slot| *slot.borrow_mut() = Some(app.clone()));
     app.set_user(None);
@@ -768,6 +806,23 @@ pub fn build(cfg: Config) {
     timer.start(250, false);
     *app.timer.borrow_mut() = Some(timer);
 
+    // The icon is put up while the window is hidden, to bring it back.
+    let tray = Tray::builder("Pubseed")
+        .show_hide_label("&Restore", "Show Pubseed's window")
+        .on_click(bring_to_front)
+        .on_show_hide(bring_to_front)
+        .build(&frame);
+    tray.on_exit(|| {
+        if let Some(app) = self::app() {
+            // Dialogs first: closing the window under one upsets wxWidgets.
+            while app.visibility.close_dialog() {}
+            app.w.frame.close(true);
+        }
+    });
+    tray.hide();
+    *app.tray.borrow_mut() = Some(tray);
+    hotkeys::register(&app, false);
+
     frame.show(true);
     frame.centre();
     // After an update, Windows would open the new copy behind other windows.
@@ -784,11 +839,7 @@ pub fn build(cfg: Config) {
 /// while it's already running.
 pub fn bring_to_front() {
     if let Some(app) = app() {
-        if app.w.frame.is_iconized() {
-            app.w.frame.iconize(false);
-        }
-        app.w.frame.show(true);
-        app.w.frame.raise();
+        app.come_forward();
     }
 }
 

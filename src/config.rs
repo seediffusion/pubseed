@@ -45,6 +45,8 @@ pub struct Config {
     pub save_folder: String,
     /// Whether to look for a new version each time Pubseed starts.
     pub check_for_updates: bool,
+    /// Changes to the global hotkeys' keys; see `ui::hotkeys`.
+    pub hotkeys: std::collections::BTreeMap<String, String>,
 }
 
 impl Default for Config {
@@ -63,6 +65,7 @@ impl Default for Config {
             speed: 1.0,
             save_folder: String::new(),
             check_for_updates: true,
+            hotkeys: crate::ui::hotkeys::defaults(),
         }
     }
 }
