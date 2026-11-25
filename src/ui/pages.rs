@@ -4,6 +4,7 @@
 use super::*;
 use crate::acc;
 use crate::api::{Chat, Comment, Notification, Profile, Result};
+use quiet_list::{QuietList, Select};
 
 pub enum Kind {
     Feed(Source),
@@ -117,17 +118,14 @@ pub fn set_playing(app: &App, state: Option<(String, bool)>) {
     let changed = [previous, state].map(|state| state.map(|(id, _)| id));
     for stack in &app.tabs {
         for page in stack.borrow().iter() {
-            let rows: Vec<(usize, String)> = page
+            let shown = page
                 .st
                 .borrow()
                 .items
                 .iter()
-                .enumerate()
-                .filter(|(_, item)| changed.iter().flatten().any(|id| id == item.id()))
-                .map(|(index, item)| (index, item.label()))
-                .collect();
-            for (index, label) in rows {
-                page.list.set_string(index as u32, &label);
+                .any(|item| changed.iter().flatten().any(|id| id == item.id()));
+            if shown {
+                page.show_rows(Select::Keep);
             }
         }
     }
@@ -190,7 +188,9 @@ pub struct Page {
     pub tab: usize,
     pub kind: Kind,
     pub panel: Panel,
-    pub list: ListBox,
+    /// Rows are keyed by their item's id; an empty list shows one placeholder
+    /// row, keyed by an empty string.
+    pub list: QuietList<String>,
     details: Option<TextCtrl>,
     pub input: Option<TextCtrl>,
     favorite: Option<Button>,
@@ -201,7 +201,7 @@ pub struct Page {
 
 impl Page {
     fn selected(&self) -> Option<usize> {
-        let index = self.list.get_selection()? as usize;
+        let index = self.list.selected_index()?;
         (index < self.st.borrow().items.len()).then_some(index)
     }
 
@@ -230,48 +230,49 @@ impl Page {
         .to_string()
     }
 
-    /// Rebuilds the list's rows, keeping the selection on the same item.
+    /// Shows a new set of rows, selecting the item with id `keep`, or the
+    /// first row.
     fn refill(&self, keep: Option<String>) {
-        let (mut labels, selection) = {
+        self.show_rows(keep.map_or(Select::Start, Select::Key));
+    }
+
+    /// Gives the list the items as they are now. With `Select::Keep` the user
+    /// stays on their row and hears nothing, however the rows changed.
+    pub fn show_rows(&self, select: Select<String>) {
+        let rows: Vec<(String, String)> = {
             let st = self.st.borrow();
-            let labels: Vec<String> = st.items.iter().map(Item::label).collect();
-            let kept = keep.and_then(|id| st.items.iter().position(|item| item.id() == id));
-            // Selecting a row in a list that does not have focus makes a
-            // screen reader read that row out of the blue.
-            let first = (!st.items.is_empty() && self.list.has_focus()).then_some(0);
-            (labels, kept.or(first))
+            st.items
+                .iter()
+                .map(|item| (item.id().to_string(), item.label()))
+                .collect()
         };
-        if labels.is_empty() {
-            labels.push(self.placeholder());
-        }
-        self.list.clear();
-        for label in &labels {
-            self.list.append(label);
-        }
-        if let Some(index) = selection {
-            self.list.set_selection(index as u32, true);
-        }
+        let rows = if rows.is_empty() {
+            vec![(String::new(), self.placeholder())]
+        } else {
+            rows
+        };
+        self.list.update_labelled(rows, select);
     }
 
     /// Changes an audio wherever this page shows it.
     fn patch_audio(&self, audio_id: &str, change: impl Fn(&mut Audio)) {
-        let mut rows = Vec::new();
+        let mut shown = false;
         {
             let mut st = self.st.borrow_mut();
             if let Some(audio) = st.audio.as_mut().filter(|audio| audio.id == audio_id) {
                 change(audio);
             }
-            for (index, item) in st.items.iter_mut().enumerate() {
+            for item in &mut st.items {
                 if let Item::Audio(audio) = item
                     && audio.id == audio_id
                 {
                     change(audio);
-                    rows.push((index, item.label()));
+                    shown = true;
                 }
             }
         }
-        for (index, label) in rows {
-            self.list.set_string(index as u32, &label);
+        if shown {
+            self.show_rows(Select::Keep);
         }
         self.update_buttons();
     }
@@ -391,16 +392,14 @@ pub fn open(app: &Rc<App>, tab: usize, kind: Kind) -> Rc<Page> {
         });
     }
 
-    // The label must be created immediately before the list: it is where the
-    // list gets its accessible name.
+    // The label is created immediately before the list, where screen readers
+    // look for it.
     label(&list_name);
-    let list = ListBox::builder(&panel).build();
-    acc::native_list(&list);
+    let list = QuietList::new(&panel, &list_name);
     sizer.add(&list, 2, SizerFlag::Expand | SizerFlag::All, 6);
-    list.on_item_double_clicked(move |_| with_page(id, activate));
-    list.on_selection_changed(move |_| with_page(id, load_more_at_end));
-    // The request travels up from the list; only panels can listen for it.
-    panel.on_context_menu(move |_| with_page(id, show_item_menu));
+    list.on_activate(move || with_page(id, activate));
+    list.on_selection_changed(move || with_page(id, load_more_at_end));
+    list.on_context_menu(move || with_page(id, show_item_menu));
 
     let input = match &kind {
         Kind::Audio(_) => Some(("Write a comment", TextCtrlStyle::MultiLine)),
@@ -498,19 +497,17 @@ pub fn check_feed(app: &Rc<App>) {
                 .map(Item::Stream)
                 .chain(listing.audios.into_iter().map(Item::Audio))
                 .collect();
-            let selected = page.selected();
-            let (rows, new_audio, new_stream, tell) = {
+            let (updated, new_audio, new_stream, tell) = {
                 let mut st = page.st.borrow_mut();
                 if st.loading {
                     return;
                 }
-                let (mut new_audio, mut new_stream) = (false, false);
-                let mut rows = Vec::new();
+                let (mut new_audio, mut new_stream, mut updated) = (false, false, false);
                 for item in fresh {
                     match st.items.iter().position(|old| old.id() == item.id()) {
                         Some(index) => {
                             st.items[index] = item;
-                            rows.push((index, st.items[index].label()));
+                            updated = true;
                         }
                         None if matches!(item, Item::Stream(_)) => new_stream = true,
                         None => new_audio = true,
@@ -518,15 +515,11 @@ pub fn check_feed(app: &Rc<App>) {
                 }
                 let tell = (new_audio || new_stream) && !st.told_new;
                 st.told_new |= tell;
-                (rows, new_audio, new_stream, tell)
+                (updated, new_audio, new_stream, tell)
             };
-            for (index, label) in rows {
-                // Rewriting the selected row makes a screen reader read it.
-                if Some(index) != selected
-                    && page.list.get_string(index as u32).as_deref() != Some(&label)
-                {
-                    page.list.set_string(index as u32, &label);
-                }
+            // The quiet list doesn't read the selected row out again.
+            if updated {
+                page.show_rows(Select::Keep);
             }
             if tell && app.current().is_some_and(|current| current.id == id) {
                 app.notify(match (new_audio, new_stream, newest_first) {
@@ -608,16 +601,11 @@ pub fn load(app: &Rc<App>, page: &Rc<Page>, more: bool) {
                                 st.subscribed = profile.is_subscribed;
                                 st.profile = Some(profile);
                             }
-                            st.items[before..]
-                                .iter()
-                                .map(Item::label)
-                                .collect::<Vec<_>>()
+                            st.items.len() - before
                         };
                         if more {
-                            for label in &added {
-                                page.list.append(label);
-                            }
-                            app.notify(&format!("{} more", added.len()));
+                            page.show_rows(Select::Keep);
+                            app.notify(&format!("{added} more"));
                         } else {
                             page.refill(keep);
                             show_profile(page);
@@ -753,17 +741,8 @@ pub fn show_room(page: &Page, stream: &Stream, chats: Vec<Chat>) {
 }
 
 pub fn append_chat(page: &Page, chat: Chat) {
-    let item = Item::Chat(chat);
-    let label = item.label();
-    let was_empty = {
-        let mut st = page.st.borrow_mut();
-        st.items.push(item);
-        st.items.len() == 1
-    };
-    if was_empty {
-        page.list.clear();
-    }
-    page.list.append(&label);
+    page.st.borrow_mut().items.push(Item::Chat(chat));
+    page.show_rows(Select::Keep);
 }
 
 pub fn remove_item(page: &Page, item_id: &str) {
@@ -775,11 +754,8 @@ pub fn remove_item(page: &Page, item_id: &str) {
         .position(|item| item.id() == item_id);
     if let Some(index) = index {
         page.st.borrow_mut().items.remove(index);
-        if page.st.borrow().items.is_empty() {
-            page.refill(None);
-        } else {
-            page.list.delete(index as u32);
-        }
+        // The selection moves to the row that took its place.
+        page.show_rows(Select::Keep);
     }
 }
 
@@ -966,7 +942,7 @@ fn show_item_menu(app: &Rc<App>, page: &Rc<Page>) {
         );
     }
     let mut menu = menu.build();
-    page.list.popup_menu(&mut menu, None);
+    page.list.popup_menu(&mut menu);
 }
 
 fn show_more_menu(page: &Page) {
@@ -1353,9 +1329,12 @@ fn go_to_parent(page: &Page) {
     let Some(index) = page.selected() else {
         return;
     };
-    let parent = parent_of(&page.st.borrow().items, index);
+    let parent = {
+        let st = page.st.borrow();
+        parent_of(&st.items, index).map(|parent| st.items[parent].id().to_string())
+    };
     if let Some(parent) = parent {
-        page.list.set_selection(parent as u32, true);
+        page.list.select(Some(&parent));
     }
 }
 
