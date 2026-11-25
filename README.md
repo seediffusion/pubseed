@@ -49,7 +49,7 @@ When you join a live stream, its audio starts playing and the Live tab turns int
 | Ctrl+Shift+S | How many people are listening |
 | Ctrl+Shift+L | Leave the stream |
 | F1 | Pubseed help |
-| Ctrl+Alt+Shift+R | Show or hide Pubseed, from any program |
+| Ctrl+Alt+Shift+A | Show or hide Pubseed, from any program |
 
 File, Global hotkeys sets keys that work while another program is in front: show or hide Pubseed, play or pause, next and previous in the queue, and reading the last announcement again. Only show or hide is on to begin with.
 

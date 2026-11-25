@@ -132,7 +132,7 @@ Global hotkeys work while another program is in front, so you can control Pubsee
 
 | Hotkey | Usual key | On to begin with |
 | --- | --- | --- |
-| Show or hide Pubseed | Ctrl+Alt+Shift+R | Yes |
+| Show or hide Pubseed | Ctrl+Alt+Shift+A | Yes |
 | Play or pause | Ctrl+Alt+Shift+P | No |
 | Next in queue | Ctrl+Alt+Shift+Right | No |
 | Previous in queue | Ctrl+Alt+Shift+Left | No |

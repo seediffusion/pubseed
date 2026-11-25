@@ -1,5 +1,6 @@
 //! Global hotkeys: keys that work while another program is in front. They
-//! and their keys are Ramblio's. Only Show or hide is on until the user gives
+//! and their keys are Ramblio's, except Show or hide, which is A for
+//! AudioPub where Ramblio has R. Only Show or hide is on until the user gives
 //! the others a key, as in Ramblio.
 
 use super::*;
@@ -18,7 +19,7 @@ pub enum Action {
 
 /// Each action, the name it's saved under, what it's called, and its key.
 const ACTIONS: [(Action, &str, &str, &str); 5] = [
-    (Action::ShowHide, "show_hide", "Show or hide Pubseed", "Ctrl+Alt+Shift+R"),
+    (Action::ShowHide, "show_hide", "Show or hide Pubseed", "Ctrl+Alt+Shift+A"),
     (Action::PlayPause, "play_pause", "Play or pause", "Ctrl+Alt+Shift+P"),
     (Action::Next, "next", "Next in queue", "Ctrl+Alt+Shift+Right"),
     (Action::Previous, "previous", "Previous in queue", "Ctrl+Alt+Shift+Left"),
