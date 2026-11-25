@@ -24,7 +24,7 @@ Pubseed works with NVDA, JAWS and Narrator. Things it tells you, like "Paused" o
 
 ### The main window
 
-The window has four tabs: Home, Subscriptions, Live and Notifications. Ctrl+1 to Ctrl+4 go straight to each one. The Notifications tab shows how many notifications you haven't read.
+The window has four tabs: Home, Subscriptions, Live and Notifications. Ctrl+1 to Ctrl+4 go straight to each one. The Notifications tab shows how many notifications you haven't read. Pubseed only runs once: starting it again while it's open brings its window to the front.
 
 The window is split into regions: the tabs, the page you're on, and the player, which appears at the bottom once something is playing. F6 moves to the next region and Shift+F6 to the previous one.
 

@@ -9,6 +9,7 @@ license = "MIT"
 wxdragon = "0.9.25"
 quiet-list = "0.1.1"
 ship-shape = "0.6.1"
+doorbell = "0.1.2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 dirs = "6"

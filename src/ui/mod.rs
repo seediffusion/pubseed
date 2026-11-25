@@ -780,6 +780,18 @@ pub fn build(cfg: Config) {
     }
 }
 
+/// Shows the main window in front of everything, as when Pubseed is started
+/// while it's already running.
+pub fn bring_to_front() {
+    if let Some(app) = app() {
+        if app.w.frame.is_iconized() {
+            app.w.frame.iconize(false);
+        }
+        app.w.frame.show(true);
+        app.w.frame.raise();
+    }
+}
+
 /// Sets a tab's label, with a count after it when there is one.
 pub fn set_tab_count(app: &App, tab: usize, count: i64) {
     let label = if count > 0 {

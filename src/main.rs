@@ -16,6 +16,15 @@ mod ui;
 use wxdragon::appearance::Appearance;
 
 fn main() {
+    // Pubseed runs once. Starting it again brings the running copy forward.
+    match doorbell::ring("pubseed", &[] as &[&str]) {
+        Ok(doorbell::Ring::Delivered) => return,
+        Ok(doorbell::Ring::First(door)) => {
+            door.listen(|_| wxdragon::call_after(Box::new(ui::bring_to_front)));
+        }
+        // If it can't tell, starting a second copy is better than none.
+        Err(_) => {}
+    }
     let cfg = config::Config::load();
     let _ = wxdragon::main(move |_| {
         // Dark mode has to be chosen before any window exists.

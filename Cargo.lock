@@ -451,6 +451,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "doorbell"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "06f1c53a5f4a9cdff01241989c0a163df2f5d1139cbee995a1a22f95c81ab9d9"
+dependencies = [
+ "windows",
+]
+
+[[package]]
 name = "embed-manifest"
 version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1473,6 +1482,7 @@ name = "pubseed"
 version = "0.2.0"
 dependencies = [
  "dirs 6.0.0",
+ "doorbell",
  "embed-manifest",
  "quiet-list",
  "reqwest 0.12.28",
