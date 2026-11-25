@@ -43,6 +43,8 @@ pub struct Config {
     pub speed: f32,
     /// The folder audio was last saved to; empty until something is saved.
     pub save_folder: String,
+    /// Whether to look for a new version each time Pubseed starts.
+    pub check_for_updates: bool,
 }
 
 impl Default for Config {
@@ -60,6 +62,7 @@ impl Default for Config {
             voice_rate: 0,
             speed: 1.0,
             save_folder: String::new(),
+            check_for_updates: true,
         }
     }
 }

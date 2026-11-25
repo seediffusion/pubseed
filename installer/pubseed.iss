@@ -27,7 +27,8 @@ DisableDirPage=auto
 ; Shows the MIT licence, to be accepted before installing.
 LicenseFile=..\LICENSE
 OutputDir=..\target\installer
-OutputBaseFilename=pubseed-setup-{#AppVersion}
+; ship-shape looks for this name on each release, so it carries no version.
+OutputBaseFilename=pubseed_setup
 UninstallDisplayName={#AppName}
 UninstallDisplayIcon={app}\{#AppExe}
 Compression=lzma2

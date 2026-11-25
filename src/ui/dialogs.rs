@@ -227,6 +227,11 @@ pub fn settings(app: &Rc<App>) {
         .build();
     read_chat.set_value(cfg.read_chat);
     form.sizer.add(&read_chat, 0, SizerFlag::All, 8);
+    let check_updates = CheckBox::builder(&form.panel)
+        .with_label("Check for updates when Pubseed starts")
+        .build();
+    check_updates.set_value(cfg.check_for_updates);
+    form.sizer.add(&check_updates, 0, SizerFlag::All, 8);
     let output = form.choice(
         "Read chat with",
         names(&["Your screen reader", "An installed voice"]),
@@ -284,6 +289,7 @@ pub fn settings(app: &Rc<App>) {
             [appearance.get_selection().unwrap_or(0).min(2) as usize];
         cfg.skip_seconds = SKIP_CHOICES[skip.get_selection().unwrap_or(1).min(3) as usize];
         cfg.read_chat = read_chat.get_value();
+        cfg.check_for_updates = check_updates.get_value();
         cfg.speech_output = if output.get_selection() == Some(1) {
             SpeechOutput::Voice
         } else {

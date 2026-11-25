@@ -15,6 +15,8 @@ use crate::speech;
 use pages::{Kind, Page};
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
+use ship_shape::ui::CheckTrigger;
+use ship_shape::{UpdateChannel, UpdaterConfig};
 use std::sync::Arc;
 use wxdragon::prelude::*;
 
@@ -54,6 +56,7 @@ pub const ID_LEAVE: Id = 6042;
 pub const ID_WEBSITE: Id = 6050;
 pub const ID_ABOUT: Id = 6051;
 pub const ID_HELP: Id = 6052;
+pub const ID_CHECK_UPDATES: Id = 6053;
 // The selected row's menu.
 pub const ID_ITEM_PLAY: Id = 6100;
 pub const ID_ITEM_PLAY_ALL: Id = 6101;
@@ -397,6 +400,7 @@ fn build_menu_bar(read_chat: bool, speed: f32, skip_seconds: u32) -> MenuBar {
     live.check_item(ID_READ_CHAT, read_chat);
     let help = Menu::builder()
         .append_item(ID_HELP, "Pubseed &help\tF1", "")
+        .append_item(ID_CHECK_UPDATES, "Check for &updates...", "")
         .append_item(ID_WEBSITE, "Open the AudioPub &website", "")
         .append_item(ID_ABOUT, "&About Pubseed", "")
         .build();
@@ -475,6 +479,7 @@ pub fn dispatch(app: &Rc<App>, id: Id) {
         ID_LISTENERS => live::listeners(app),
         ID_LEAVE => live::leave(app, "Left the stream"),
         ID_HELP => open_help(app),
+        ID_CHECK_UPDATES => check_for_updates(app, CheckTrigger::Manual),
         ID_WEBSITE => open_in_browser(&app.api.base),
         ID_ABOUT => dialogs::message(
             app,
@@ -491,6 +496,32 @@ pub fn dispatch(app: &Rc<App>, id: Id) {
             }
         }
     }
+}
+
+/// The key that signs Pubseed's releases: the second line of
+/// `installer/minisign.pub`. An update that it didn't sign is never installed.
+const UPDATE_KEY: &str = "RWTc5uxhW5VKfXYVuKjDhfhfariO437XWLyMUVgmXh9RjV5zMemRapEk";
+
+/// Looks on GitHub for a newer release. ship-shape shows the dialogs, and
+/// installs the update and starts Pubseed again if the user wants it.
+fn check_for_updates(app: &App, trigger: CheckTrigger) {
+    let config = UpdaterConfig::new(
+        "seediffusion/pubseed",
+        "pubseed",
+        "Pubseed",
+        UPDATE_KEY,
+        env!("CARGO_PKG_VERSION"),
+    )
+    // The setup program runs out of sight, with no wizard or messages, and
+    // ship-shape starts Pubseed again when it's done, as Ramblio's updates do.
+    // Windows still asks for permission when Pubseed is installed for everyone.
+    .with_installer_args(["/verysilent", "/suppressmsgboxes", "/norestart"]);
+    ship_shape::ui::run_update_check(
+        Arc::new(config),
+        &app.w.frame,
+        UpdateChannel::Stable,
+        trigger,
+    );
 }
 
 /// Opens the help page beside the program in the browser. The build makes it
@@ -739,8 +770,13 @@ pub fn build(cfg: Config) {
 
     frame.show(true);
     frame.centre();
+    // After an update, Windows would open the new copy behind other windows.
+    ship_shape::ui::bring_to_front_after_update(&frame);
     if let Some(page) = app.top(TAB_HOME) {
         page.list.set_focus();
+    }
+    if app.cfg.borrow().check_for_updates {
+        check_for_updates(&app, CheckTrigger::Automatic);
     }
 }
 

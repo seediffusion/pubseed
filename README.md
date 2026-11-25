@@ -10,7 +10,7 @@ Pubseed is in early development and only runs on Windows for now. Broadcasting y
 
 Download the latest `pubseed-setup` program from the [releases page](https://github.com/seediffusion/pubseed/releases) and run it. It installs Pubseed for everyone on the computer and adds it to the Start menu; if you don't have administrator rights, it offers to install it just for you instead. Running a newer setup program later upgrades the copy you have, and your settings and sign-in are kept.
 
-Pubseed doesn't update itself yet, so check the releases page now and then.
+Pubseed looks for a new version each time it starts, and Help, Check for updates looks straight away. If there is one, it tells you what's new and asks whether to install it. The update downloads, installs out of sight and starts Pubseed again; if Pubseed is installed for everyone, Windows asks for permission first. Settings has a box to turn the check at startup off.
 
 ## Getting around
 
@@ -96,6 +96,16 @@ iscc installer\pubseed.iss
 ```
 
 It's written to `target\installer`. The version comes from `Cargo.toml`.
+
+### Publishing a release
+
+Pubseed's updater looks at the latest release on GitHub, so a release has to be published as a full release, not a pre-release, and tagged with its version, such as `v0.3.0`. It needs two files: `pubseed_setup.exe`, and its signature, `pubseed_setup.exe.minisig`, which [minisign](https://jedisct1.github.io/minisign/) makes with the release key:
+
+```
+minisign -Sm target\installer\pubseed_setup.exe -s %USERPROFILE%\.minisign\pubseed.key
+```
+
+Pubseed only installs an update whose signature matches the public key in `installer\minisign.pub`, which is built into the program. The release notes are shown in the update dialog.
 
 `cargo test` runs the offline tests. A couple of tests talk to the real AudioPub site and play audio, so they're skipped by default; run them with `cargo test -- --ignored`.
 

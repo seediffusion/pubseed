@@ -8,7 +8,9 @@ You can open this page at any time with F1, or from Help, Pubseed help.
 
 ### Installing and updating
 
-Pubseed is installed with its setup program, from the [releases page](https://github.com/seediffusion/pubseed/releases). To update, download the newest setup program and run it; it replaces the copy you have, and your settings and sign-in stay as they were. Pubseed doesn't check for updates on its own yet, so it's worth looking at that page now and then.
+Pubseed is installed with its setup program, from the [releases page](https://github.com/seediffusion/pubseed/releases). Pubseed looks for a new version each time it starts, and Help, Check for updates looks straight away. When there is one, it tells you what's new and asks whether to install it. If you say yes, it downloads the update, closes, installs it without any setup windows, and opens again. When Pubseed is installed for everyone on the computer, Windows asks for permission before the update installs. Your settings and sign-in stay as they were.
+
+Every update is checked against Pubseed's signature before it's installed, so a file that didn't come from Pubseed's developers is never run. To stop the check at startup, turn off "Check for updates when Pubseed starts" in Settings.
 
 ### Signing in
 
@@ -119,6 +121,7 @@ File, Settings (Ctrl+Comma) has:
 - **Appearance:** light, dark, or the same as Windows. This takes effect the next time you start Pubseed.
 - **Skip back and forward by:** how far the skip keys move.
 - **Read live chat messages aloud:** the same as Ctrl+Shift+R.
+- **Check for updates when Pubseed starts:** on unless you turn it off. Help, Check for updates works either way.
 - **Read chat with:** your screen reader, or one of the voices installed in Windows. A separate voice keeps chat from interrupting your screen reader. If you choose a voice, you can pick which one, set how fast it talks, and try it out with Test the voice.
 
 Settings are kept in `%APPDATA%\pubseed\settings.json`.
